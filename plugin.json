@@ -2,7 +2,8 @@
   "schemaVersion": 1,
   "id": "opencode-model-fallback",
   "name": "Model Fallback",
-  "version": "1.0.0",
+  "description": "Ordered model fallback chains with health tracking and preemptive redirects for OpenCode",
+  "version": "0.1.0",
   "entry": "dist/index.js",
   "links": [
     {

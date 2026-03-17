@@ -28,8 +28,17 @@ opencode-model-fallback/
 ├── package.json                  # name: opencode-model-fallback
 ├── tsconfig.json                 # ES2022, ESNext modules
 ├── index.ts                      # Re-exports createPlugin from src/plugin.ts
+├── biome.json                    # Biome lint/format configuration
+├── .releaserc.json               # semantic-release configuration
+├── CHANGELOG.md                  # Release notes maintained by semantic-release
+├── .github/
+│   ├── workflows/
+│   │   ├── ci.yml                # CI quality gates (lint, test, typecheck, build)
+│   │   └── release.yml           # semantic-release pipeline on main
+│   └── dependabot.yml            # Weekly dependency updates
 ├── src/
-│   ├── plugin.ts                 # Plugin entry point — thin event router
+│   ├── plugin.ts                 # Plugin entry point — event router + chat.message hook
+│   ├── preemptive.ts             # Sync preemptive redirect logic for chat.message hook
 │   ├── types.ts                  # Shared type definitions
 │   ├── config/
 │   │   ├── schema.ts             # Zod schemas + validation + security bounds
@@ -63,7 +72,10 @@ opencode-model-fallback/
 │   ├── health.test.ts            # ✓ Health state machine
 │   ├── fallback.test.ts          # ✓ Chain resolution, session state, locks
 │   ├── replay.test.ts            # ✓ Message part conversion
-│   ├── orchestrator.test.ts      # ✓ Integration: full fallback flow, cascading, concurrency
+│   ├── orchestrator.test.ts      # ✓ Integration: full fallback flow, cascading, concurrency, depth reset
+│   ├── preemptive.test.ts        # ✓ Preemptive redirect, depth reset, session sync, no circular trigger
+│   ├── plugin.test.ts            # ✓ Event handler hardening (malformed payloads, recovery toast dedupe)
+│   ├── fallback-status.test.ts   # ✓ Tool output with partially seeded session state
 │   ├── agent-loader.test.ts      # ✓ Agent file parsing, frontmatter, overrides
 │   └── helpers/
 │       └── mock-client.ts        # Mock OpenCode client for integration tests
@@ -97,7 +109,23 @@ interface SessionFallbackState {
 }
 ```
 
-### Critical Code Path: Detection → Fallback → Replay
+### Critical Code Paths
+
+#### Path A: Preemptive Redirect (fast, no 429)
+
+```
+chat.message hook fires (new user message)
+  │
+  ├─ Sync session state: setOriginalModel, detect TUI revert → reset fallbackDepth
+  ├─ Check model health: is target model rate_limited?
+  │   └─ No → return (message proceeds normally)
+  │
+  ├─ Resolve fallback chain → pick healthy model
+  ├─ Mutate output.message.model → redirect to fallback
+  └─ Message goes directly to fallback model (no 429 round-trip)
+```
+
+#### Path B: Reactive Fallback (after 429 error)
 
 ```
 session.status event (type: "retry", message: "Rate limited...")
@@ -108,16 +136,17 @@ session.status event (type: "retry", message: "Rate limited...")
   │
   ├─ Acquire per-session processing lock (prevents double-fallback)
   ├─ Check deduplication window (3s since lastFallbackAt)
-  ├─ Check maxFallbackDepth not exceeded
   │
   ├─ Resolve agent name (from cache or client.session.messages())
   ├─ Look up fallback chain: config.agents[agentName] ?? config.agents["*"]
+  │
+  ├─ Fetch messages → sync currentModel (detect TUI revert → reset fallbackDepth)
+  ├─ Check maxFallbackDepth not exceeded (after sync so reset takes effect)
   ├─ Walk chain: skip rate_limited models, prefer healthy, cooldown as last resort
   │
   ├─ Step 1: client.session.abort() — stop retry loop
-  ├─ Step 2: client.session.messages() — find last user message
-  ├─ Step 3: client.session.revert({ messageID }) — undo failed attempt
-  ├─ Step 4: client.session.prompt({ model: fallbackModel, parts }) — replay
+  ├─ Step 2: client.session.revert({ messageID }) — undo failed attempt
+  ├─ Step 3: client.session.prompt({ model: fallbackModel, parts }) — replay
   │
   ├─ Update state: mark original model rate_limited, increment fallbackDepth
   ├─ Notify user: inline toast "Switched from X to Y (rate_limit)"
@@ -274,11 +303,19 @@ All issues resolved:
 - omf-owh.4: Manual model switch staleness — model sync in orchestrator
 - omf-owh.5: README — comprehensive docs with config examples, migration guide, troubleshooting
 
+### Phase 6: Preemptive Fallback + Depth Reset ✓
+
+Addresses two problems: wasted 429 round-trips per message after a successful fallback, and `fallbackDepth` exhaustion from TUI model reverts.
+
+- **Depth reset on TUI revert** — orchestrator model sync block detects revert to `originalModel` and resets `fallbackDepth = 0`; depth check moved after sync so reset takes effect before the guard
+- **Preemptive redirect** — `src/preemptive.ts` with `tryPreemptiveRedirect()` for testable sync logic; `chat.message` hook in `src/plugin.ts` mutates `output.message.model` to redirect rate-limited models before they hit the provider
+- **Tests** — 3 new orchestrator depth-reset tests, full `test/preemptive.test.ts` suite (redirect, depth reset, session sync, no circular triggering)
+
 ---
 
 ## Verification Plan
 
-1. **Unit tests** (per module): config validation, pattern matching, classification, health transitions, chain resolution, message conversion, agent loader — **78/78 passing**
+1. **Unit tests** (per module): config validation, pattern matching, classification, health transitions, chain resolution, message conversion, agent loader, preemptive redirect, plugin events, fallback-status tool — **101/101 passing**
 2. **Integration tests** (mock client): full fallback flow, cascading, max depth, concurrent events, session deletion — **complete**
 3. **Manual E2E test**: Install as local plugin, configure fallback chains, trigger rate limit, verify:
    - Detection logged correctly
