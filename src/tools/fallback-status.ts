@@ -2,6 +2,7 @@ import { tool, type ToolDefinition } from "@opencode-ai/plugin";
 import type { FallbackStore } from "../state/store.js";
 import type { PluginConfig } from "../types.js";
 import { getFallbackUsage } from "../display/usage.js";
+import { resolveAgentFile } from "../config/agent-loader.js";
 import type { PluginInput } from "@opencode-ai/plugin";
 
 type Client = PluginInput["client"];
@@ -9,20 +10,56 @@ type Client = PluginInput["client"];
 export function createFallbackStatusTool(
   store: FallbackStore,
   config: PluginConfig,
-  client: Client
+  client: Client,
+  directory: string
 ): ToolDefinition {
   return tool({
     description:
       "Show the current model fallback status: which models are healthy/rate-limited, fallback history for this session, and usage breakdown by model.",
     args: {
-      verbose: tool.schema.boolean().optional().describe(
-        "Include detailed token/cost usage per model period"
-      ),
+      verbose: tool.schema
+        .boolean()
+        .optional()
+        .describe("Include detailed token/cost usage per model period"),
     },
     async execute(args, context) {
       const sessionId = context.sessionID;
       const sessionState = store.sessions.get(sessionId);
       const allHealth = store.health.getAll();
+
+      // Discover active model + agent name when session state is unpopulated
+      let activeModel: string | null = null;
+      let agentName: string | null = sessionState.agentName;
+
+      if (!sessionState.originalModel) {
+        try {
+          const msgs = await client.session.messages({
+            path: { id: sessionId },
+          });
+          const latestUserMessage = getLastUserModelAndAgent(msgs.data);
+          if (latestUserMessage) {
+            activeModel = latestUserMessage.modelKey;
+            if (!agentName && latestUserMessage.agentName) {
+              agentName = latestUserMessage.agentName;
+            }
+          }
+        } catch {
+          // best-effort
+        }
+      }
+
+      const agentFile = agentName
+        ? resolveAgentFile(
+            agentName,
+            directory,
+            config.agentDirs.length ? config.agentDirs : undefined
+          )
+        : null;
+      const agentLabel = agentName
+        ? agentFile
+          ? `${agentName} (${agentFile})`
+          : agentName
+        : "(unknown)";
 
       const lines: string[] = ["## Model Fallback Status\n"];
 
@@ -33,9 +70,11 @@ export function createFallbackStatusTool(
       // Session fallback state
       lines.push("### Current Session");
       lines.push(`- **Session ID:** ${sessionId}`);
-      lines.push(`- **Agent:** ${sessionState.agentName ?? "(unknown)"}`);
-      lines.push(`- **Original model:** ${sessionState.originalModel ?? "(not set)"}`);
-      lines.push(`- **Current model:** ${sessionState.currentModel ?? "(not set)"}`);
+      lines.push(`- **Agent:** ${agentLabel}`);
+      lines.push(
+        `- **Original model:** ${sessionState.originalModel ?? activeModel ?? "(not set)"}`
+      );
+      lines.push(`- **Current model:** ${sessionState.currentModel ?? activeModel ?? "(not set)"}`);
       lines.push(`- **Fallback depth:** ${sessionState.fallbackDepth}`);
       lines.push("");
 
@@ -44,8 +83,11 @@ export function createFallbackStatusTool(
         lines.push("### Fallback History");
         for (const event of sessionState.fallbackHistory) {
           const time = new Date(event.at).toLocaleTimeString();
+          const eventKind = event.trigger === "preemptive" ? "preemptive" : "reactive";
+          const eventAgent = event.agentName ?? agentName;
           lines.push(
-            `- **${time}** — switched from \`${event.fromModel}\` to \`${event.toModel}\` (${event.reason})`
+            `- **${time}** — \`${event.fromModel}\` → \`${event.toModel}\` (${event.reason}, ${eventKind})` +
+              (eventAgent ? ` · agent: ${eventAgent}` : "")
           );
         }
         lines.push("");
@@ -57,8 +99,7 @@ export function createFallbackStatusTool(
         lines.push("- All models healthy (no issues detected)");
       } else {
         for (const h of allHealth) {
-          const stateEmoji =
-            h.state === "healthy" ? "✓" : h.state === "cooldown" ? "~" : "✗";
+          const stateEmoji = h.state === "healthy" ? "✓" : h.state === "cooldown" ? "~" : "✗";
           let detail = `- \`${h.modelKey}\` — **${h.state}** ${stateEmoji}`;
           if (h.state === "rate_limited" && h.cooldownExpiresAt) {
             const secsLeft = Math.max(0, Math.round((h.cooldownExpiresAt - Date.now()) / 1000));
@@ -96,4 +137,37 @@ export function createFallbackStatusTool(
       return lines.join("\n");
     },
   });
+}
+
+function getLastUserModelAndAgent(data: unknown): {
+  modelKey: string;
+  agentName: string | null;
+} | null {
+  if (!Array.isArray(data)) return null;
+
+  for (let i = data.length - 1; i >= 0; i--) {
+    const entry = data[i];
+    if (!entry || typeof entry !== "object") continue;
+
+    const info = (entry as { info?: unknown }).info;
+    if (!info || typeof info !== "object") continue;
+
+    if ((info as { role?: unknown }).role !== "user") continue;
+
+    const model = (info as { model?: unknown }).model;
+    if (!model || typeof model !== "object") continue;
+
+    const providerID = (model as { providerID?: unknown }).providerID;
+    const modelID = (model as { modelID?: unknown }).modelID;
+    if (typeof providerID !== "string" || typeof modelID !== "string") continue;
+
+    const agentName = (info as { agent?: unknown }).agent;
+
+    return {
+      modelKey: `${providerID}/${modelID}`,
+      agentName: typeof agentName === "string" ? agentName : null,
+    };
+  }
+
+  return null;
 }

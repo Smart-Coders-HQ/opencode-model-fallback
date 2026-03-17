@@ -1,5 +1,5 @@
 import { readFileSync, existsSync } from "fs";
-import { join } from "path";
+import { basename, join } from "path";
 import { homedir } from "os";
 import type { PluginConfig } from "../types.js";
 import { parseConfig, mergeWithDefaults } from "./schema.js";
@@ -45,7 +45,7 @@ export function loadConfig(directory: string): LoadResult {
           agents: { ...agentFileConfigs, ...DEFAULT_CONFIG.agents },
         },
         path: candidate,
-        warnings: [`Failed to parse ${candidate}: invalid JSON — using defaults`],
+        warnings: [`Failed to parse ${basename(candidate)}: invalid JSON — using defaults`],
         migrated: false,
       };
     }
