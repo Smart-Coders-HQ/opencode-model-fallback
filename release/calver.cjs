@@ -34,5 +34,6 @@ module.exports = {
     logger.log("CalVer: %s → %s", nextRelease.version, version);
     nextRelease.version = version;
     nextRelease.gitTag = `v${version}`;
+    return { nextRelease: { version, gitTag: `v${version}` } };
   },
 };
