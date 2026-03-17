@@ -4,6 +4,7 @@ dist/
 .beads/
 .tmp/
 *.tsbuildinfo
+.playwright-mcp/
 
 # Dolt database files (added by bd init)
 .dolt/
