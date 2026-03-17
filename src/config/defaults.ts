@@ -14,16 +14,13 @@ export const DEFAULT_PATTERNS = [
   "429",
 ];
 
-export const DEFAULT_LOG_PATH = join(
-  homedir(),
-  ".local/share/opencode/logs/model-fallback.log"
-);
+export const DEFAULT_LOG_PATH = join(homedir(), ".local/share/opencode/logs/model-fallback.log");
 
 export const DEFAULT_CONFIG: PluginConfig = {
   enabled: true,
   defaults: {
     fallbackOn: ["rate_limit", "quota_exceeded", "5xx", "timeout", "overloaded"],
-    cooldownMs: 300_000,       // 5 minutes
+    cooldownMs: 300_000, // 5 minutes
     retryOriginalAfterMs: 900_000, // 15 minutes
     maxFallbackDepth: 3,
   },
@@ -35,4 +32,5 @@ export const DEFAULT_CONFIG: PluginConfig = {
   patterns: DEFAULT_PATTERNS,
   logging: true,
   logPath: DEFAULT_LOG_PATH,
+  agentDirs: [],
 };

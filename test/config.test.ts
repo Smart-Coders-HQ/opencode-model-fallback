@@ -48,6 +48,25 @@ describe("parseConfig", () => {
     expect(warnings.length).toBeGreaterThan(0);
     expect(config).toEqual({});
   });
+
+  it("keeps valid fields when one field is invalid", () => {
+    const raw = {
+      enabled: false,
+      logging: true,
+      defaults: {
+        cooldownMs: 100,
+        retryOriginalAfterMs: 120_000,
+      },
+    };
+
+    const { config, warnings } = parseConfig(raw);
+
+    expect(config.enabled).toBe(false);
+    expect(config.logging).toBe(true);
+    expect(config.defaults?.retryOriginalAfterMs).toBe(120_000);
+    expect(config.defaults?.cooldownMs).toBeUndefined();
+    expect(warnings.some((warning) => warning.includes("defaults.cooldownMs"))).toBe(true);
+  });
 });
 
 describe("mergeWithDefaults", () => {
@@ -69,7 +88,9 @@ describe("mergeWithDefaults", () => {
   });
 
   it("expands ~/ in logPath", () => {
-    const result = mergeWithDefaults({ logPath: "~/.local/share/opencode/test.log" });
+    const result = mergeWithDefaults({
+      logPath: "~/.local/share/opencode/test.log",
+    });
     expect(result.logPath.startsWith(homedir())).toBe(true);
     expect(result.logPath).not.toContain("~/");
   });

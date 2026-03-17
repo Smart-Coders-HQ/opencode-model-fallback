@@ -68,7 +68,15 @@ export async function getFallbackUsage(
 }
 
 function getPeriodTokens(
-  entries: Array<{ info: { role: string; time: { created: number; completed?: number }; tokens?: { input: number; output: number }; cost?: number }; parts: unknown[] }>,
+  entries: Array<{
+    info: {
+      role: string;
+      time: { created: number; completed?: number };
+      tokens?: { input: number; output: number };
+      cost?: number;
+    };
+    parts: unknown[];
+  }>,
   fromMs: number,
   toMs: number | null
 ): { inputTokens: number; outputTokens: number; cost: number } {

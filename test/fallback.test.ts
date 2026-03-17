@@ -76,7 +76,7 @@ describe("resolveFallbackModels", () => {
       maxFallbackDepth: 3,
     },
     agents: {
-      "build": { fallbackModels: ["a/1", "a/2"] },
+      build: { fallbackModels: ["a/1", "a/2"] },
       "*": { fallbackModels: ["b/1"] },
     },
     patterns: ["rate limit"],
