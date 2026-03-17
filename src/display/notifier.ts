@@ -25,6 +25,24 @@ export async function notifyFallback(
     });
 }
 
+export async function notifyFallbackActive(
+  client: Client,
+  originalModel: ModelKey,
+  currentModel: ModelKey
+): Promise<void> {
+  const message = `Using ${shortModelName(currentModel)} (fallback from ${shortModelName(originalModel)})`;
+  await client.tui
+    .showToast({
+      body: {
+        title: "Fallback Active",
+        message,
+        variant: "warning",
+        duration: 4000,
+      },
+    })
+    .catch(() => {});
+}
+
 export async function notifyRecovery(client: Client, originalModel: ModelKey): Promise<void> {
   const message = `Original model ${shortModelName(originalModel)} is available again`;
   await client.tui
