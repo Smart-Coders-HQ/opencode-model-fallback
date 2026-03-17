@@ -64,6 +64,9 @@
   "bugs": {
     "url": "https://github.com/Smart-Coders-HQ/opencode-model-fallback/issues"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=18.0.0"
   }
