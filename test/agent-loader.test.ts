@@ -37,15 +37,12 @@ fallback:
     - google/gemini-flash-2-5
 ---
 # Agent description
-`,
+`
     );
 
     const configs = loadAgentFallbackConfigs(dir, dir);
     expect(configs["CoderAgent"]).toEqual({
-      fallbackModels: [
-        "anthropic/claude-sonnet-4-20250514",
-        "google/gemini-flash-2-5",
-      ],
+      fallbackModels: ["anthropic/claude-sonnet-4-20250514", "google/gemini-flash-2-5"],
     });
   });
 
@@ -59,7 +56,7 @@ fallback:
         fallback: {
           models: ["anthropic/claude-sonnet-4-20250514"],
         },
-      }),
+      })
     );
 
     const configs = loadAgentFallbackConfigs(dir, dir);
@@ -78,7 +75,7 @@ fallback:
   models:
     - anthropic/claude-sonnet-4-20250514
 ---
-`,
+`
     );
 
     const configs = loadAgentFallbackConfigs(dir, dir);
@@ -95,14 +92,12 @@ fallback:
   models:
     - anthropic/claude-sonnet-4-20250514
 ---
-`,
+`
     );
 
     const configs = loadAgentFallbackConfigs(dir, dir);
     expect(configs["code-reviewer"]).toBeDefined();
-    expect(configs["code-reviewer"].fallbackModels).toEqual([
-      "anthropic/claude-sonnet-4-20250514",
-    ]);
+    expect(configs["code-reviewer"].fallbackModels).toEqual(["anthropic/claude-sonnet-4-20250514"]);
   });
 
   it("skips files with no fallback section", () => {
@@ -113,11 +108,11 @@ fallback:
 name: NoFallback
 model: openai/gpt-5
 ---
-`,
+`
     );
     writeFileSync(
       join(agentsDir, "no-fallback.json"),
-      JSON.stringify({ name: "NoFallbackJson", model: "openai/gpt-5" }),
+      JSON.stringify({ name: "NoFallbackJson", model: "openai/gpt-5" })
     );
 
     const configs = loadAgentFallbackConfigs(dir, dir);
@@ -136,7 +131,7 @@ fallback:
     - not-valid
     - also/valid-model
 ---
-`,
+`
     );
 
     const configs = loadAgentFallbackConfigs(dir, dir);
@@ -158,7 +153,7 @@ fallback:
     - not-a-valid-key
     - also-bad
 ---
-`,
+`
     );
 
     const configs = loadAgentFallbackConfigs(dir, dir);
@@ -178,7 +173,7 @@ fallback:
   models:
     - openai/gpt-4
 ---
-`,
+`
     );
     writeFileSync(
       join(agentDir, "shared.md"),
@@ -188,14 +183,12 @@ fallback:
   models:
     - anthropic/claude-sonnet-4-20250514
 ---
-`,
+`
     );
 
     const configs = loadAgentFallbackConfigs(dir, dir);
     // agent/ is scanned after agents/, so it wins
-    expect(configs["SharedAgent"].fallbackModels).toEqual([
-      "anthropic/claude-sonnet-4-20250514",
-    ]);
+    expect(configs["SharedAgent"].fallbackModels).toEqual(["anthropic/claude-sonnet-4-20250514"]);
   });
 
   it("finds files recursively in agent/ subdirectories", () => {
@@ -209,7 +202,7 @@ fallback:
   models:
     - anthropic/claude-sonnet-4-20250514
 ---
-`,
+`
     );
 
     const configs = loadAgentFallbackConfigs(dir, dir);
@@ -232,7 +225,7 @@ fallback:
   models:
     - openai/gpt-4
 ---
-`,
+`
       );
       writeFileSync(
         join(agentsDir, "shared.md"),
@@ -242,14 +235,12 @@ fallback:
   models:
     - anthropic/claude-sonnet-4-20250514
 ---
-`,
+`
       );
 
       // Project-local (paths 3,4) override global (paths 1,2)
       const configs = loadAgentFallbackConfigs(dir, fakeHome);
-      expect(configs["SharedAgent"].fallbackModels).toEqual([
-        "anthropic/claude-sonnet-4-20250514",
-      ]);
+      expect(configs["SharedAgent"].fallbackModels).toEqual(["anthropic/claude-sonnet-4-20250514"]);
     } finally {
       rmSync(fakeHome, { recursive: true, force: true });
     }
@@ -279,7 +270,7 @@ fallback:
   models:
     - anthropic/claude-sonnet-4-20250514
 ---
-`,
+`
     );
 
     writeFileSync(
@@ -288,14 +279,12 @@ fallback:
         agents: {
           CoderAgent: { fallbackModels: ["openai/gpt-4o"] },
         },
-      }),
+      })
     );
 
     const result = loadConfig(dir);
     // model-fallback.json wins over agent file
-    expect(result.config.agents["CoderAgent"].fallbackModels).toEqual([
-      "openai/gpt-4o",
-    ]);
+    expect(result.config.agents["CoderAgent"].fallbackModels).toEqual(["openai/gpt-4o"]);
   });
 
   it("agent-file config is used when no model-fallback.json exists", () => {
@@ -310,7 +299,7 @@ fallback:
   models:
     - anthropic/claude-sonnet-4-20250514
 ---
-`,
+`
     );
 
     const result = loadConfig(dir);
@@ -331,7 +320,7 @@ fallback:
   models:
     - anthropic/claude-sonnet-4-20250514
 ---
-`,
+`
     );
 
     writeFileSync(
@@ -340,15 +329,13 @@ fallback:
         agents: {
           "*": { fallbackModels: ["google/gemini-flash-2-5"] },
         },
-      }),
+      })
     );
 
     const result = loadConfig(dir);
     expect(result.config.agents["CoderAgent"].fallbackModels).toEqual([
       "anthropic/claude-sonnet-4-20250514",
     ]);
-    expect(result.config.agents["*"].fallbackModels).toEqual([
-      "google/gemini-flash-2-5",
-    ]);
+    expect(result.config.agents["*"].fallbackModels).toEqual(["google/gemini-flash-2-5"]);
   });
 });

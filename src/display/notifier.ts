@@ -20,13 +20,12 @@ export async function notifyFallback(
         duration: 6000,
       },
     })
-    .catch(() => {/* TUI may not be available in all contexts */});
+    .catch(() => {
+      /* TUI may not be available in all contexts */
+    });
 }
 
-export async function notifyRecovery(
-  client: Client,
-  originalModel: ModelKey
-): Promise<void> {
+export async function notifyRecovery(client: Client, originalModel: ModelKey): Promise<void> {
   const message = `Original model ${shortModelName(originalModel)} is available again`;
   await client.tui
     .showToast({

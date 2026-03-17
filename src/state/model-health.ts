@@ -58,11 +58,19 @@ export class ModelHealthStore {
   private tick(): void {
     const now = Date.now();
     for (const [key, health] of this.store) {
-      if (health.state === "rate_limited" && health.cooldownExpiresAt && now >= health.cooldownExpiresAt) {
+      if (
+        health.state === "rate_limited" &&
+        health.cooldownExpiresAt &&
+        now >= health.cooldownExpiresAt
+      ) {
         const next: ModelHealth = { ...health, state: "cooldown" };
         this.store.set(key, next);
         this.onTransition?.(key, "rate_limited", "cooldown");
-      } else if (health.state === "cooldown" && health.retryOriginalAt && now >= health.retryOriginalAt) {
+      } else if (
+        health.state === "cooldown" &&
+        health.retryOriginalAt &&
+        now >= health.retryOriginalAt
+      ) {
         const next: ModelHealth = {
           ...health,
           state: "healthy",

@@ -30,10 +30,7 @@ export async function resolveAgentName(
   }
 }
 
-export function resolveFallbackModels(
-  config: PluginConfig,
-  agentName: string | null
-): ModelKey[] {
+export function resolveFallbackModels(config: PluginConfig, agentName: string | null): ModelKey[] {
   if (agentName && config.agents[agentName]) {
     return config.agents[agentName].fallbackModels;
   }

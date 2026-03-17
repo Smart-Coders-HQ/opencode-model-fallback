@@ -40,9 +40,13 @@ export class Logger {
     // Always log to OpenCode's native log system at info+ level
     if (level !== "debug") {
       const message = `[model-fallback] ${event}${Object.keys(fields).length ? " " + JSON.stringify(fields) : ""}`;
-      this.client.app.log({
-        body: { service: "model-fallback", level, message },
-      }).catch(() => {/* best-effort */});
+      this.client.app
+        .log({
+          body: { service: "model-fallback", level, message },
+        })
+        .catch(() => {
+          /* best-effort */
+        });
     }
   }
 
