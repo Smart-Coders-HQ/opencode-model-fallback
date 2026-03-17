@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/Smart-Coders-HQ/opencode-model-fallback/compare/v1.0.0...v1.1.0) (2026-03-17)
+
+
+### Features
+
+* **release:** add CalVer plugin for YYYY.M.D[-N] versioning ([393ce7e](https://github.com/Smart-Coders-HQ/opencode-model-fallback/commit/393ce7e6049994891014f058fe33be65c96597d0))
+
 # 1.0.0 (2026-03-17)
 
 
