@@ -10,7 +10,7 @@ export class FallbackStore {
   readonly health: ModelHealthStore;
   readonly sessions: SessionStateStore;
 
-  constructor(config: PluginConfig, logger: Logger) {
+  constructor(_config: PluginConfig, logger: Logger) {
     this.sessions = new SessionStateStore();
     this.health = new ModelHealthStore({
       onTransition: (modelKey, from, to) => {
