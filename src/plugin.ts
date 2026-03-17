@@ -9,7 +9,7 @@ import { FallbackStore } from "./state/store.js";
 import { matchesAnyPattern } from "./detection/patterns.js";
 import { classifyError } from "./detection/classifier.js";
 import { attemptFallback } from "./replay/orchestrator.js";
-import { notifyFallback, notifyRecovery } from "./display/notifier.js";
+import { notifyFallback, notifyFallbackActive, notifyRecovery } from "./display/notifier.js";
 import { createFallbackStatusTool } from "./tools/fallback-status.js";
 import { resolveAgentFile, toRelativeAgentPath } from "./config/agent-loader.js";
 import { tryPreemptiveRedirect } from "./preemptive.js";
@@ -70,6 +70,19 @@ export const createPlugin: Plugin = async ({ client, directory }) => {
 
       if (input.agent) {
         store.sessions.setAgentName(input.sessionID, input.agent);
+        if (!sessionState.agentFile) {
+          const absPath = resolveAgentFile(
+            input.agent,
+            directory,
+            config.agentDirs?.length ? config.agentDirs : undefined
+          );
+          if (absPath) {
+            store.sessions.setAgentFile(
+              input.sessionID,
+              toRelativeAgentPath(absPath, directory)
+            );
+          }
+        }
       }
 
       const result = tryPreemptiveRedirect(
@@ -90,6 +103,13 @@ export const createPlugin: Plugin = async ({ client, directory }) => {
           from: modelKey,
           to: result.fallbackModel,
         });
+      }
+
+      // Remind user on each turn while running on a fallback model
+      const current = sessionState.currentModel;
+      const original = sessionState.originalModel;
+      if (current && original && current !== original) {
+        notifyFallbackActive(client, original, current).catch(() => {});
       }
     },
 
@@ -207,6 +227,19 @@ async function handleRetry(
       }
     } catch {
       // Best-effort
+    }
+  }
+
+  // Resolve agent file if still missing (chat.message usually handles this,
+  // but session.error events bypass the hook)
+  if (sessionState.agentName && !sessionState.agentFile) {
+    const absPath = resolveAgentFile(
+      sessionState.agentName,
+      directory,
+      config.agentDirs?.length ? config.agentDirs : undefined
+    );
+    if (absPath) {
+      store.sessions.setAgentFile(sessionId, toRelativeAgentPath(absPath, directory));
     }
   }
 
