@@ -1,5 +1,5 @@
 {
-  "name": "opencode-model-fallback",
+  "name": "@smart-coders-hq/opencode-model-fallback",
   "version": "0.1.0",
   "description": "Ordered model fallback chains with health tracking for OpenCode",
   "type": "module",
@@ -22,7 +22,11 @@
     "format:check": "biome format --check .",
     "release": "semantic-release"
   },
-  "files": ["dist", "plugin.json", "examples"],
+  "files": [
+    "dist",
+    "plugin.json",
+    "examples"
+  ],
   "peerDependencies": {
     "@opencode-ai/plugin": ">=1.2.0",
     "zod": ">=4.0.0"
@@ -43,7 +47,13 @@
     "typescript": "^5.9.3",
     "zod": "^4.3.6"
   },
-  "keywords": ["opencode", "plugin", "model-fallback", "rate-limit", "failover"],
+  "keywords": [
+    "opencode",
+    "plugin",
+    "model-fallback",
+    "rate-limit",
+    "failover"
+  ],
   "license": "Apache-2.0",
   "repository": {
     "type": "git",

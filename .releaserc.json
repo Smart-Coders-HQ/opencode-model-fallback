@@ -4,7 +4,6 @@
   "plugins": [
     "@semantic-release/commit-analyzer",
     "@semantic-release/release-notes-generator",
-    "./release/calver.cjs",
     [
       "@semantic-release/changelog",
       {

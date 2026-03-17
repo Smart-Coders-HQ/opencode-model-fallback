@@ -18,7 +18,7 @@ Add to the `plugin` array in your `~/.config/opencode/opencode.jsonc`:
 {
   "plugin": [
     // ... existing plugins
-    "opencode-model-fallback",
+    "@smart-coders-hq/opencode-model-fallback",
   ],
 }
 ```
@@ -215,6 +215,7 @@ Key log events: `plugin.init`, `retry.detected`, `fallback.success`, `fallback.e
 - Uses **Conventional Commits** + `semantic-release` for automated versioning/changelog/release notes
 - CI runs lint, tests, type check, and build on every push/PR via `.github/workflows/ci.yml`
 - Release workflow runs on `main` after successful CI via `.github/workflows/release.yml`
+- Published as `@smart-coders-hq/opencode-model-fallback`
 - To publish to npm, set repository secret `NPM_TOKEN`
 
 ## Development
