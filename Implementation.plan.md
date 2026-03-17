@@ -25,7 +25,7 @@ This plugin fills the gap with per-agent ordered fallback chains, a health state
 
 ```
 opencode-model-fallback/
-├── package.json                  # name: opencode-model-fallback
+├── package.json                  # name: @smart-coders-hq/opencode-model-fallback
 ├── tsconfig.json                 # ES2022, ESNext modules
 ├── index.ts                      # Re-exports createPlugin from src/plugin.ts
 ├── biome.json                    # Biome lint/format configuration
