@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/Smart-Coders-HQ/opencode-model-fallback/compare/v1.1.0...v1.1.1) (2026-03-17)
+
+
+### Bug Fixes
+
+* **release:** add Node 22, fix CalVer version propagation ([4c253ed](https://github.com/Smart-Coders-HQ/opencode-model-fallback/commit/4c253ed4646477d4f7110462a27dbc9942b88052))
+
 # [1.1.0](https://github.com/Smart-Coders-HQ/opencode-model-fallback/compare/v1.0.0...v1.1.0) (2026-03-17)
 
 
