@@ -4,10 +4,11 @@ OpenCode plugin that adds automatic model fallback when your primary model hits 
 
 ## How it works
 
-1. Listens for `session.status: retry` events with rate-limit patterns (e.g. "429", "quota exceeded")
-2. Aborts the retry loop, reverts the failed message, and replays it with the next healthy fallback model
+1. **Preemptive redirect** — intercepts outgoing messages via `chat.message` hook; if the target model is known to be rate-limited, redirects the message to a healthy fallback _before_ it hits the provider (no 429 round-trip)
+2. **Reactive fallback** — if a 429 still occurs (first hit, or preemptive not available), listens for `session.status: retry` events, aborts the retry loop, reverts the failed message, and replays it with the next healthy fallback model
 3. Shows an inline toast notification and logs the event
 4. Tracks model health globally (rate limits are account-wide) — automatically recovers after configurable cooldown periods
+5. **Depth reset** — when the TUI reverts to the original model between messages, `fallbackDepth` resets so `maxFallbackDepth` only guards true cascading failures within a single message
 
 ## Installation
 
@@ -199,7 +200,7 @@ Your `model-fallback.json` has no `agents["*"].fallbackModels` (or no entry for 
 All configured fallback models are currently rate-limited. Wait for `cooldownMs` to elapse or add more models to the chain.
 
 **"max fallback depth reached"**
-The session has already fallen back `maxFallbackDepth` times. Start a new session or increase `maxFallbackDepth` in config.
+The session has hit `maxFallbackDepth` cascading fallbacks within a single message (all models failing in sequence). Depth resets automatically when the TUI reverts to the original model between messages, so this typically indicates all configured models are rate-limited simultaneously. Start a new session or increase `maxFallbackDepth` in config.
 
 **Check the logs:**
 
@@ -209,11 +210,19 @@ tail -f ~/.local/share/opencode/logs/model-fallback.log | jq .
 
 Key log events: `plugin.init`, `retry.detected`, `fallback.success`, `fallback.exhausted`, `health.transition`, `recovery.available`
 
+## Release automation
+
+- Uses **Conventional Commits** + `semantic-release` for automated versioning/changelog/release notes
+- CI runs lint, tests, type check, and build on every push/PR via `.github/workflows/ci.yml`
+- Release workflow runs on `main` after successful CI via `.github/workflows/release.yml`
+- To publish to npm, set repository secret `NPM_TOKEN`
+
 ## Development
 
 ```bash
 bun install
-bun test              # 78 tests
+bun run lint          # lint checks
+bun test              # 101 tests
 bunx tsc --noEmit     # type check
 bun run build         # build to dist/
 ```

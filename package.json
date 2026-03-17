@@ -1,6 +1,6 @@
 {
   "name": "opencode-model-fallback",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Ordered model fallback chains with health tracking for OpenCode",
   "type": "module",
   "main": "dist/index.js",
@@ -15,32 +15,35 @@
     "build": "bun build index.ts --outdir dist --target node --format esm --external @opencode-ai/plugin --external zod && tsc --emitDeclarationOnly",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
-    "dev": "tsc --watch --noEmit"
+    "dev": "tsc --watch --noEmit",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write .",
+    "format": "biome format --write .",
+    "format:check": "biome format --check .",
+    "release": "semantic-release"
   },
-  "files": [
-    "dist",
-    "plugin.json",
-    "examples"
-  ],
+  "files": ["dist", "plugin.json", "examples"],
   "peerDependencies": {
     "@opencode-ai/plugin": ">=1.2.0",
     "zod": ">=4.0.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
     "@opencode-ai/plugin": "^1.2.24",
     "@types/bun": "^1.3.10",
     "@types/js-yaml": "^4.0.9",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.6",
+    "@semantic-release/npm": "^12.0.2",
+    "@semantic-release/release-notes-generator": "^14.1.0",
     "js-yaml": "^4.1.0",
+    "semantic-release": "^24.2.9",
     "typescript": "^5.9.3",
     "zod": "^4.3.6"
   },
-  "keywords": [
-    "opencode",
-    "plugin",
-    "model-fallback",
-    "rate-limit",
-    "failover"
-  ],
+  "keywords": ["opencode", "plugin", "model-fallback", "rate-limit", "failover"],
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
