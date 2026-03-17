@@ -25,17 +25,21 @@ export interface FallbackEvent {
   toModel: ModelKey;
   reason: ErrorCategory;
   sessionId: string;
+  trigger: "reactive" | "preemptive";
+  agentName: string | null;
 }
 
 export interface SessionFallbackState {
   sessionId: string;
   agentName: string | null;
+  agentFile: string | null;
   originalModel: ModelKey | null;
   currentModel: ModelKey | null;
   fallbackDepth: number;
   isProcessing: boolean;
   lastFallbackAt: number | null;
   fallbackHistory: FallbackEvent[];
+  recoveryNotifiedForModel: ModelKey | null;
 }
 
 export interface AgentConfig {
@@ -56,4 +60,5 @@ export interface PluginConfig {
   patterns: string[];
   logging: boolean;
   logPath: string;
+  agentDirs: string[];
 }
