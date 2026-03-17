@@ -1,7 +1,7 @@
-import { describe, it, expect, afterEach } from "bun:test";
+import { afterEach, describe, expect, it } from "bun:test";
+import { Logger } from "../src/logging/logger.js";
 import { attemptFallback } from "../src/replay/orchestrator.js";
 import { FallbackStore } from "../src/state/store.js";
-import { Logger } from "../src/logging/logger.js";
 import type { PluginConfig } from "../src/types.js";
 import { makeMockClient, makeUserMessage } from "./helpers/mock-client.js";
 
@@ -431,7 +431,7 @@ describe("attemptFallback — concurrency", () => {
     // Verify the race fix: lastFallbackAt is set before session.prompt()
     let dedupWindowActiveAtPromptTime = false;
 
-    const { client, calls } = makeMockClient({
+    const { client } = makeMockClient({
       messages: [makeUserMessage("s1", "m1", "openai", "gpt-5.3-codex", "coder")],
     });
 

@@ -271,7 +271,7 @@ export async function handleIdle(
   sessionId: string,
   client: Parameters<Plugin>[0]["client"],
   store: FallbackStore,
-  config: ReturnType<typeof loadConfig>["config"],
+  _config: ReturnType<typeof loadConfig>["config"],
   logger: Logger
 ): Promise<void> {
   const state = store.sessions.get(sessionId);
