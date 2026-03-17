@@ -1,0 +1,37 @@
+{
+  "enabled": true,
+  "defaults": {
+    "fallbackOn": ["rate_limit", "quota_exceeded", "5xx", "timeout", "overloaded"],
+    "cooldownMs": 300000,
+    "retryOriginalAfterMs": 900000,
+    "maxFallbackDepth": 3
+  },
+  "agents": {
+    "build": {
+      "fallbackModels": [
+        "anthropic/claude-sonnet-4-20250514",
+        "google/gemini-3-pro",
+        "openai/gpt-4o"
+      ]
+    },
+    "*": {
+      "fallbackModels": [
+        "anthropic/claude-sonnet-4-20250514",
+        "google/gemini-flash-2-5"
+      ]
+    }
+  },
+  "patterns": [
+    "rate limit",
+    "usage limit",
+    "too many requests",
+    "quota exceeded",
+    "overloaded",
+    "capacity exceeded",
+    "credits exhausted",
+    "billing limit",
+    "429"
+  ],
+  "logging": true,
+  "logPath": "~/.local/share/opencode/logs/model-fallback.log"
+}

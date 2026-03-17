@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "opencode-model-fallback",
+  "name": "Model Fallback",
+  "version": "1.0.0",
+  "entry": "dist/index.js",
+  "links": [
+    {
+      "label": "GitHub",
+      "url": "https://github.com/Smart-Coders-HQ/opencode-model-fallback"
+    }
+  ]
+}

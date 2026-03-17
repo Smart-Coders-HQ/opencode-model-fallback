@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.logs/
+.beads/
+.tmp/
+*.tsbuildinfo
+
+# Dolt database files (added by bd init)
+.dolt/
+*.db

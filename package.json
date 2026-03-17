@@ -1,0 +1,57 @@
+{
+  "name": "opencode-model-fallback",
+  "version": "1.0.0",
+  "description": "Ordered model fallback chains with health tracking for OpenCode",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "bun build index.ts --outdir dist --target node --format esm --external @opencode-ai/plugin --external zod && tsc --emitDeclarationOnly",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsc --watch --noEmit"
+  },
+  "files": [
+    "dist",
+    "plugin.json",
+    "examples"
+  ],
+  "peerDependencies": {
+    "@opencode-ai/plugin": ">=1.2.0",
+    "zod": ">=4.0.0"
+  },
+  "devDependencies": {
+    "@opencode-ai/plugin": "^1.2.24",
+    "@types/bun": "^1.3.10",
+    "@types/js-yaml": "^4.0.9",
+    "js-yaml": "^4.1.0",
+    "typescript": "^5.9.3",
+    "zod": "^4.3.6"
+  },
+  "keywords": [
+    "opencode",
+    "plugin",
+    "model-fallback",
+    "rate-limit",
+    "failover"
+  ],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Smart-Coders-HQ/opencode-model-fallback.git"
+  },
+  "author": "Błażej Pawlak <blazej@smartcoders.xyz>",
+  "homepage": "https://github.com/Smart-Coders-HQ/opencode-model-fallback#readme",
+  "bugs": {
+    "url": "https://github.com/Smart-Coders-HQ/opencode-model-fallback/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
