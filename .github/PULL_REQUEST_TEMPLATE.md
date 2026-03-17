@@ -1,3 +1,19 @@
+## Prompt Request
+
+<!-- If this PR was produced by an AI agent, paste the prompt(s) you used here.
+     Include:
+     - The exact prompt or instruction given to the AI
+     - Any constraints, context, or files you pointed it at
+     - Which model/agent was used (e.g. claude-sonnet-4-6, gpt-5.3-codex)
+     - How many back-and-forth iterations it took (ideally: one-shot)
+     - Anything the AI got wrong on the first try and how you corrected it
+
+     Reviewers should be able to read this section and understand the intent,
+     then verify the code delivers on it — rather than reverse-engineering intent
+     from the diff. Inspired by Peter Steinberger's "prompt requests" workflow.
+
+     Skip this section if the code was written manually. -->
+
 ## Summary
 
 <!-- A concise description of what this PR does and why. -->
