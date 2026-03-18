@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { classifyError } from "../src/detection/classifier.js";
 import { matchesAnyPattern } from "../src/detection/patterns.js";
+import { DEFAULT_PATTERNS } from "../src/config/defaults.js";
 
 describe("classifyError", () => {
   it("classifies 429 status code as rate_limit", () => {
@@ -44,6 +45,43 @@ describe("classifyError", () => {
   it("is case-insensitive", () => {
     expect(classifyError("RATE LIMIT EXCEEDED")).toBe("rate_limit");
     expect(classifyError("Rate Limit Exceeded")).toBe("rate_limit");
+  });
+
+  it("classifies ratelimit (one word) as rate_limit", () => {
+    expect(classifyError("RateLimitError: too fast")).toBe("rate_limit");
+  });
+
+  it("classifies resource exhausted (Google gRPC) as rate_limit", () => {
+    expect(classifyError("resource exhausted")).toBe("rate_limit");
+    expect(classifyError("RESOURCE_EXHAUSTED quota exceeded")).toBe("rate_limit");
+  });
+
+  it("classifies 402 status code as quota_exceeded", () => {
+    expect(classifyError("Payment required", 402)).toBe("quota_exceeded");
+  });
+
+  it("classifies insufficient credit(s) as quota_exceeded", () => {
+    expect(classifyError("insufficient credit balance")).toBe("quota_exceeded");
+    expect(classifyError("Insufficient credits on your account")).toBe("quota_exceeded");
+  });
+
+  it("classifies 529 status code as overloaded (not 5xx)", () => {
+    expect(classifyError("Overloaded", 529)).toBe("overloaded");
+    expect(classifyError("some error", 529)).toBe("overloaded");
+  });
+});
+
+describe("DEFAULT_PATTERNS gate coverage", () => {
+  it("passes ratelimit through the gate", () => {
+    expect(matchesAnyPattern("RateLimitError", DEFAULT_PATTERNS)).toBe(true);
+  });
+
+  it("passes resource exhausted through the gate", () => {
+    expect(matchesAnyPattern("resource exhausted quota", DEFAULT_PATTERNS)).toBe(true);
+  });
+
+  it("passes insufficient credit through the gate", () => {
+    expect(matchesAnyPattern("insufficient credit balance", DEFAULT_PATTERNS)).toBe(true);
   });
 });
 

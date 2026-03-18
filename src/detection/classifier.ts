@@ -1,7 +1,15 @@
 import type { ErrorCategory } from "../types.js";
 import { matchesAnyPattern } from "./patterns.js";
 
-const RATE_LIMIT_PATTERNS = ["rate limit", "ratelimit", "too many requests", "usage limit", "429"];
+const RATE_LIMIT_PATTERNS = [
+  "rate limit",
+  "ratelimit",
+  "too many requests",
+  "usage limit",
+  "resource exhausted",
+  "resource_exhausted",
+  "429",
+];
 
 const QUOTA_PATTERNS = [
   "quota exceeded",
@@ -9,6 +17,8 @@ const QUOTA_PATTERNS = [
   "billing limit",
   "credit limit",
   "insufficient quota",
+  "insufficient credit",
+  "insufficient credits",
   "out of credits",
 ];
 
@@ -38,10 +48,10 @@ export function classifyError(message: string, statusCode?: number): ErrorCatego
   if (statusCode === 429 || matchesAnyPattern(text, RATE_LIMIT_PATTERNS)) {
     return "rate_limit";
   }
-  if (matchesAnyPattern(text, QUOTA_PATTERNS)) {
+  if (statusCode === 402 || matchesAnyPattern(text, QUOTA_PATTERNS)) {
     return "quota_exceeded";
   }
-  if (matchesAnyPattern(text, OVERLOADED_PATTERNS)) {
+  if (statusCode === 529 || matchesAnyPattern(text, OVERLOADED_PATTERNS)) {
     return "overloaded";
   }
   if (matchesAnyPattern(text, TIMEOUT_PATTERNS)) {

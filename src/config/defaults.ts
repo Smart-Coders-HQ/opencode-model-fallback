@@ -4,13 +4,16 @@ import type { PluginConfig } from "../types.js";
 
 export const DEFAULT_PATTERNS = [
   "rate limit",
+  "ratelimit",
   "usage limit",
   "too many requests",
   "quota exceeded",
   "overloaded",
   "capacity exceeded",
   "credits exhausted",
+  "insufficient credit",
   "billing limit",
+  "resource exhausted",
   "429",
 ];
 
