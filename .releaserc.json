@@ -4,6 +4,13 @@
   "plugins": [
     "@semantic-release/commit-analyzer",
     "@semantic-release/release-notes-generator",
+    "@semantic-release/changelog",
+    [
+      "@semantic-release/exec",
+      {
+        "prepareCmd": "node -e \"const fs=require('fs');const p=JSON.parse(fs.readFileSync('plugin.json','utf8'));p.version='${nextRelease.version}';fs.writeFileSync('plugin.json',JSON.stringify(p,null,2)+'\\n')\""
+      }
+    ],
     [
       "@semantic-release/npm",
       {
