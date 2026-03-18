@@ -11,7 +11,7 @@ export interface MockMessageEntry {
 export interface MockClientCalls {
   abort: string[];
   revert: Array<{ sessionId: string; messageID: string }>;
-  prompt: Array<{ sessionId: string; providerID: string; modelID: string; parts: unknown[] }>;
+  prompt: Array<{ sessionId: string; providerID: string; modelID: string; agent?: string; parts: unknown[] }>;
   toasts: Array<{ title?: string; message: string; variant: string }>;
   logs: Array<{ level: string; message: string }>;
 }
@@ -52,13 +52,14 @@ export function makeMockClient(opts: MockClientOptions = {}): {
       },
       prompt: async (options: {
         path: { id: string };
-        body?: { model?: { providerID: string; modelID: string }; parts?: unknown[] };
+        body?: { model?: { providerID: string; modelID: string }; agent?: string; parts?: unknown[] };
       }) => {
         if (opts.promptError) throw opts.promptError;
         calls.prompt.push({
           sessionId: options.path.id,
           providerID: options.body?.model?.providerID ?? "",
           modelID: options.body?.model?.modelID ?? "",
+          agent: options.body?.agent,
           parts: options.body?.parts ?? [],
         });
         return { data: {} };
