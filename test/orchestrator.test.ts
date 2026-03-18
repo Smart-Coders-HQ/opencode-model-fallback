@@ -453,6 +453,41 @@ describe("attemptFallback — concurrency", () => {
   });
 });
 
+// ─── Agent preservation ───────────────────────────────────────────────────────
+
+describe("attemptFallback — agent preservation", () => {
+  it("passes the agent name to the prompt call so the fallback model runs under the same agent", async () => {
+    const { client, calls } = makeMockClient({
+      messages: [makeUserMessage("s1", "m1", "openai", "gpt-5.3-codex", "OpenCoder")],
+    });
+    const store = makeStore();
+    store.sessions.setOriginalModel("s1", "openai/gpt-5.3-codex");
+    const logger = new Logger(client, "/tmp/test.log", false);
+
+    await attemptFallback("s1", "rate_limit", client, store, BASE_CONFIG, logger, "/tmp");
+
+    expect(calls.prompt).toHaveLength(1);
+    expect(calls.prompt[0].agent).toBe("OpenCoder");
+  });
+
+  it("omits agent from prompt when it could not be resolved", async () => {
+    // No agent field in the message → agentName resolves to null
+    const msg = makeUserMessage("s1", "m1", "openai", "gpt-5.3-codex");
+    // Strip the agent field so resolveAgentName has nothing to work with
+    (msg.info as any).agent = undefined;
+
+    const { client, calls } = makeMockClient({ messages: [msg] });
+    const store = makeStore();
+    store.sessions.setOriginalModel("s1", "openai/gpt-5.3-codex");
+    const logger = new Logger(client, "/tmp/test.log", false);
+
+    await attemptFallback("s1", "rate_limit", client, store, BASE_CONFIG, logger, "/tmp");
+
+    expect(calls.prompt).toHaveLength(1);
+    expect(calls.prompt[0].agent).toBeUndefined();
+  });
+});
+
 // ─── Replay step failures ─────────────────────────────────────────────────────
 
 describe("attemptFallback — replay step failures", () => {
