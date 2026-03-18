@@ -214,6 +214,7 @@ export async function attemptFallback(
         path: { id: sessionId },
         body: {
           model: { providerID, modelID },
+          agent: agentName ?? undefined,
           parts: promptParts as NonNullable<
             Parameters<typeof client.session.prompt>[0]["body"]
           >["parts"],
