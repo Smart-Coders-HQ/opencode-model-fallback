@@ -376,7 +376,7 @@ fallback:
       const symlinkPath = join(agentsDir, "symlink.md");
       try {
         symlinkSync(outsideFile, symlinkPath);
-      } catch (err) {
+      } catch (_err) {
         // Skip test if symlinks are not supported (e.g., Windows without admin)
         console.warn("Skipping symlink test: symlinks not supported");
         return;
