@@ -1,8 +1,8 @@
-import type { ModelKey, PluginConfig } from "./types.js";
-import type { FallbackStore } from "./state/store.js";
 import type { Logger } from "./logging/logger.js";
 import { resolveFallbackModels } from "./resolution/agent-resolver.js";
 import { resolveFallbackModel } from "./resolution/fallback-resolver.js";
+import type { FallbackStore } from "./state/store.js";
+import type { ModelKey, PluginConfig } from "./types.js";
 
 export interface PreemptiveResult {
   redirected: boolean;

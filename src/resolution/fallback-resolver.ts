@@ -1,5 +1,5 @@
-import type { ModelKey } from "../types.js";
 import type { ModelHealthStore } from "../state/model-health.js";
+import type { ModelKey } from "../types.js";
 
 /**
  * Walk the fallback chain and return the best available model.

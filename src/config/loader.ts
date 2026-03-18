@@ -1,11 +1,11 @@
-import { readFileSync, existsSync } from "fs";
-import { basename, join } from "path";
+import { existsSync, readFileSync } from "fs";
 import { homedir } from "os";
+import { basename, join } from "path";
 import type { PluginConfig } from "../types.js";
-import { parseConfig, mergeWithDefaults } from "./schema.js";
-import { isOldFormat, migrateOldConfig } from "./migrate.js";
-import { DEFAULT_CONFIG } from "./defaults.js";
 import { loadAgentFallbackConfigs } from "./agent-loader.js";
+import { DEFAULT_CONFIG } from "./defaults.js";
+import { isOldFormat, migrateOldConfig } from "./migrate.js";
+import { mergeWithDefaults, parseConfig } from "./schema.js";
 
 const CONFIG_FILENAME = "model-fallback.json";
 const OLD_CONFIG_FILENAME = "rate-limit-fallback.json";

@@ -1,6 +1,6 @@
-import type { PluginConfig } from "../types.js";
 import { homedir } from "os";
 import { join } from "path";
+import type { PluginConfig } from "../types.js";
 
 export const DEFAULT_PATTERNS = [
   "rate limit",

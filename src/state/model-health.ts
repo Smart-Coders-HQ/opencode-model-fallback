@@ -1,4 +1,4 @@
-import type { ModelHealth, ModelKey, HealthState } from "../types.js";
+import type { HealthState, ModelHealth, ModelKey } from "../types.js";
 
 export class ModelHealthStore {
   private store = new Map<ModelKey, ModelHealth>();

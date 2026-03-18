@@ -1,18 +1,18 @@
-import type { Plugin, Hooks } from "@opencode-ai/plugin";
+import type { Hooks, Plugin } from "@opencode-ai/plugin";
 import type { Event } from "@opencode-ai/sdk";
 import { existsSync, mkdirSync, writeFileSync } from "fs";
-import { dirname, join } from "path";
 import { homedir } from "os";
-import { loadConfig } from "./config/loader.js";
-import { Logger } from "./logging/logger.js";
-import { FallbackStore } from "./state/store.js";
-import { matchesAnyPattern } from "./detection/patterns.js";
-import { classifyError } from "./detection/classifier.js";
-import { attemptFallback } from "./replay/orchestrator.js";
-import { notifyFallback, notifyFallbackActive, notifyRecovery } from "./display/notifier.js";
-import { createFallbackStatusTool } from "./tools/fallback-status.js";
+import { dirname, join } from "path";
 import { resolveAgentFile, toRelativeAgentPath } from "./config/agent-loader.js";
+import { loadConfig } from "./config/loader.js";
+import { classifyError } from "./detection/classifier.js";
+import { matchesAnyPattern } from "./detection/patterns.js";
+import { notifyFallback, notifyFallbackActive, notifyRecovery } from "./display/notifier.js";
+import { Logger } from "./logging/logger.js";
 import { tryPreemptiveRedirect } from "./preemptive.js";
+import { attemptFallback } from "./replay/orchestrator.js";
+import { FallbackStore } from "./state/store.js";
+import { createFallbackStatusTool } from "./tools/fallback-status.js";
 import type { ModelKey } from "./types.js";
 
 export const createPlugin: Plugin = async ({ client, directory }) => {
@@ -77,10 +77,7 @@ export const createPlugin: Plugin = async ({ client, directory }) => {
             config.agentDirs?.length ? config.agentDirs : undefined
           );
           if (absPath) {
-            store.sessions.setAgentFile(
-              input.sessionID,
-              toRelativeAgentPath(absPath, directory)
-            );
+            store.sessions.setAgentFile(input.sessionID, toRelativeAgentPath(absPath, directory));
           }
         }
       }

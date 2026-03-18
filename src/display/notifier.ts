@@ -1,5 +1,5 @@
 import type { PluginInput } from "@opencode-ai/plugin";
-import type { ModelKey, ErrorCategory } from "../types.js";
+import type { ErrorCategory, ModelKey } from "../types.js";
 
 type Client = PluginInput["client"];
 

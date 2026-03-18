@@ -1,6 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { convertPartsForPrompt } from "../src/replay/message-converter.js";
+import { describe, expect, it } from "bun:test";
 import type { Part } from "@opencode-ai/sdk";
+import { convertPartsForPrompt } from "../src/replay/message-converter.js";
 
 describe("convertPartsForPrompt", () => {
   it("converts text parts", () => {

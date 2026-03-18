@@ -1,9 +1,9 @@
-import { tool, type ToolDefinition } from "@opencode-ai/plugin";
+import type { PluginInput } from "@opencode-ai/plugin";
+import { type ToolDefinition, tool } from "@opencode-ai/plugin";
+import { resolveAgentFile } from "../config/agent-loader.js";
+import { getFallbackUsage } from "../display/usage.js";
 import type { FallbackStore } from "../state/store.js";
 import type { PluginConfig } from "../types.js";
-import { getFallbackUsage } from "../display/usage.js";
-import { resolveAgentFile } from "../config/agent-loader.js";
-import type { PluginInput } from "@opencode-ai/plugin";
 
 type Client = PluginInput["client"];
 
