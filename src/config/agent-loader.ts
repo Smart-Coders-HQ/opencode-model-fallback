@@ -1,7 +1,7 @@
-import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from "fs";
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "fs";
+import yaml from "js-yaml";
 import { homedir } from "os";
 import { basename, extname, isAbsolute, join, relative, resolve } from "path";
-import yaml from "js-yaml";
 import type { AgentConfig } from "../types.js";
 
 const MODEL_KEY_RE = /^[a-zA-Z0-9_-]{1,100}\/[a-zA-Z0-9._-]{1,100}$/;
@@ -115,7 +115,7 @@ function parseAgentFile(filePath: string): { name: string; config: AgentConfig }
     for (const m of models) {
       if (typeof m !== "string" || !MODEL_KEY_RE.test(m)) {
         console.warn(
-          `[model-fallback] agent-loader: skipping invalid model key ${JSON.stringify(m)} in ${filePath}`
+          `[model-fallback] agent-loader: skipping invalid model key ${JSON.stringify(m)} in ${basename(filePath)}`
         );
         continue;
       }
@@ -129,7 +129,7 @@ function parseAgentFile(filePath: string): { name: string; config: AgentConfig }
 
     return { name, config: { fallbackModels: validModels } };
   } catch (err) {
-    console.warn(`[model-fallback] agent-loader: failed to parse ${filePath}:`, err);
+    console.warn(`[model-fallback] agent-loader: failed to parse ${basename(filePath)}:`, err);
     return null;
   }
 }

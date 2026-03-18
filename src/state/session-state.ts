@@ -1,13 +1,15 @@
-import type { SessionFallbackState, ModelKey, FallbackEvent, ErrorCategory } from "../types.js";
+import type { ErrorCategory, FallbackEvent, ModelKey, SessionFallbackState } from "../types.js";
 
 export class SessionStateStore {
   private store = new Map<string, SessionFallbackState>();
 
   get(sessionId: string): SessionFallbackState {
-    if (!this.store.has(sessionId)) {
-      this.store.set(sessionId, this.newState(sessionId));
+    let state = this.store.get(sessionId);
+    if (!state) {
+      state = this.newState(sessionId);
+      this.store.set(sessionId, state);
     }
-    return this.store.get(sessionId)!;
+    return state;
   }
 
   acquireLock(sessionId: string): boolean {

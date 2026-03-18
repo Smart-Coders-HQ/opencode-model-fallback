@@ -1,6 +1,6 @@
-import { appendFileSync, mkdirSync } from "fs";
-import { dirname } from "path";
 import type { PluginInput } from "@opencode-ai/plugin";
+import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "fs";
+import { dirname } from "path";
 
 type Client = PluginInput["client"];
 
@@ -17,12 +17,19 @@ export class Logger {
   private client: Client;
   private logPath: string;
   private enabled: boolean;
+  private minLevel: "debug" | "info";
   private dirCreated = false;
 
-  constructor(client: Client, logPath: string, enabled: boolean) {
+  constructor(
+    client: Client,
+    logPath: string,
+    enabled: boolean,
+    minLevel: "debug" | "info" = "info"
+  ) {
     this.client = client;
     this.logPath = logPath;
     this.enabled = enabled;
+    this.minLevel = minLevel;
   }
 
   log(level: LogLevel, event: string, fields: Record<string, unknown> = {}): void {
@@ -33,7 +40,8 @@ export class Logger {
       ...fields,
     };
 
-    if (this.enabled) {
+    const shouldWrite = this.enabled && (this.minLevel === "debug" || level !== "debug");
+    if (shouldWrite) {
       this.writeToFile(entry);
     }
 
@@ -69,8 +77,12 @@ export class Logger {
   private writeToFile(entry: LogEntry): void {
     try {
       if (!this.dirCreated) {
-        mkdirSync(dirname(this.logPath), { recursive: true });
+        mkdirSync(dirname(this.logPath), { recursive: true, mode: 0o700 });
         this.dirCreated = true;
+      }
+      // Create the log file with owner-only permissions if it doesn't exist yet
+      if (!existsSync(this.logPath)) {
+        writeFileSync(this.logPath, "", { mode: 0o600 });
       }
       appendFileSync(this.logPath, JSON.stringify(entry) + "\n", "utf-8");
     } catch {
