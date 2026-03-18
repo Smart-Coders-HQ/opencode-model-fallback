@@ -21,6 +21,7 @@ const BASE_CONFIG: PluginConfig = {
   },
   patterns: ["rate limit"],
   logging: false,
+  logLevel: "info",
   logPath: "/tmp/test-fallback.log",
   agentDirs: [],
 };
@@ -659,5 +660,110 @@ describe("attemptFallback — replay step failures", () => {
     expect(result.fallbackModel).toBe("anthropic/claude-sonnet-4");
     expect(calls.prompt).toHaveLength(1);
     expect(calls.prompt[0].parts).toEqual([{ type: "text", text: "" }]);
+  });
+});
+
+// ─── Message converter edge cases ────────────────────────────────────────────
+
+describe("convertPartsForPrompt — malformed parts", () => {
+  it("handles null parts array gracefully", () => {
+    const { convertPartsForPrompt } = require("../src/replay/message-converter.js");
+    const result = convertPartsForPrompt(null as any);
+    expect(result).toEqual([]);
+  });
+
+  it("filters out null parts in the array", () => {
+    const { convertPartsForPrompt } = require("../src/replay/message-converter.js");
+    const parts = [{ type: "text", text: "hello" }, null, { type: "text", text: "world" }];
+    const result = convertPartsForPrompt(parts as any);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toEqual({ type: "text", text: "hello" });
+    expect(result[1]).toEqual({ type: "text", text: "world" });
+  });
+
+  it("filters out parts without type field", () => {
+    const { convertPartsForPrompt } = require("../src/replay/message-converter.js");
+    const parts = [
+      { type: "text", text: "hello" },
+      { noType: true, text: "invalid" },
+      { type: "text", text: "world" },
+    ];
+    const result = convertPartsForPrompt(parts as any);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toEqual({ type: "text", text: "hello" });
+    expect(result[1]).toEqual({ type: "text", text: "world" });
+  });
+
+  it("filters out synthetic text parts", () => {
+    const { convertPartsForPrompt } = require("../src/replay/message-converter.js");
+    const parts = [
+      { type: "text", text: "user text" },
+      { type: "text", text: "synthetic text", synthetic: true },
+      { type: "text", text: "more user text" },
+    ];
+    const result = convertPartsForPrompt(parts as any);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toEqual({ type: "text", text: "user text" });
+    expect(result[1]).toEqual({ type: "text", text: "more user text" });
+  });
+
+  it("filters out ignored text parts", () => {
+    const { convertPartsForPrompt } = require("../src/replay/message-converter.js");
+    const parts = [
+      { type: "text", text: "user text" },
+      { type: "text", text: "ignored text", ignored: true },
+      { type: "text", text: "more user text" },
+    ];
+    const result = convertPartsForPrompt(parts as any);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toEqual({ type: "text", text: "user text" });
+    expect(result[1]).toEqual({ type: "text", text: "more user text" });
+  });
+
+  it("preserves file parts with all fields", () => {
+    const { convertPartsForPrompt } = require("../src/replay/message-converter.js");
+    const parts = [
+      {
+        type: "file",
+        mime: "image/png",
+        url: "file:///path/to/image.png",
+        filename: "image.png",
+      },
+    ];
+    const result = convertPartsForPrompt(parts as any);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({
+      type: "file",
+      mime: "image/png",
+      url: "file:///path/to/image.png",
+      filename: "image.png",
+    });
+  });
+
+  it("preserves agent parts", () => {
+    const { convertPartsForPrompt } = require("../src/replay/message-converter.js");
+    const parts = [{ type: "agent", name: "coder" }];
+    const result = convertPartsForPrompt(parts as any);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({ type: "agent", name: "coder" });
+  });
+
+  it("filters out server-generated part types", () => {
+    const { convertPartsForPrompt } = require("../src/replay/message-converter.js");
+    const parts = [
+      { type: "text", text: "user text" },
+      { type: "reasoning", text: "model reasoning" },
+      { type: "tool", name: "some-tool" },
+      { type: "step-start", step: "thinking" },
+      { type: "step-finish", step: "thinking" },
+      { type: "snapshot", data: {} },
+      { type: "patch", diff: "..." },
+      { type: "retry", message: "retrying" },
+      { type: "compaction", summary: "..." },
+      { type: "subtask", task: "..." },
+    ];
+    const result = convertPartsForPrompt(parts as any);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({ type: "text", text: "user text" });
   });
 });

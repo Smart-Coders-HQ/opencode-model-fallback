@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from "bun:test";
+import { afterEach, describe, expect, it } from "bun:test";
 import { ModelHealthStore } from "../src/state/model-health.js";
 
 describe("ModelHealthStore", () => {
@@ -9,7 +9,13 @@ describe("ModelHealthStore", () => {
     stores.length = 0;
   });
 
-  function makeStore(onTransition?: Parameters<typeof ModelHealthStore>[0]["onTransition"]) {
+  type TransitionCb = ConstructorParameters<typeof ModelHealthStore>[0] extends
+    | { onTransition?: infer F }
+    | undefined
+    ? F
+    : never;
+
+  function makeStore(onTransition?: TransitionCb) {
     const s = new ModelHealthStore({ onTransition });
     stores.push(s);
     return s;
@@ -60,5 +66,50 @@ describe("ModelHealthStore", () => {
     store.markRateLimited("m/b", 300_000, 900_000);
     const all = store.getAll();
     expect(all.map((h) => h.modelKey)).toContain("m/b");
+  });
+
+  // --- tick() recovery transitions ---
+
+  it("tick transitions rate_limited → cooldown when cooldownExpiresAt has passed", () => {
+    const transitions: Array<[string, string, string]> = [];
+    const store = makeStore((key, from, to) => transitions.push([key, from, to]));
+
+    store.markRateLimited("m/a", 1 /* 1ms */, 999_999);
+    // Wait until the cooldown expires
+    const start = Date.now();
+    while (Date.now() - start < 5) {
+      /* busy-wait 5ms */
+    }
+    (store as unknown as { tick(): void }).tick();
+
+    expect(store.get("m/a").state).toBe("cooldown");
+    expect(transitions).toEqual([["m/a", "rate_limited", "cooldown"]]);
+  });
+
+  it("tick transitions cooldown → healthy when retryOriginalAt has passed", () => {
+    const transitions: Array<[string, string, string]> = [];
+    const store = makeStore((key, from, to) => transitions.push([key, from, to]));
+
+    // Drive model through rate_limited → cooldown manually
+    store.markRateLimited("m/b", 1, 1);
+    const start = Date.now();
+    while (Date.now() - start < 5) {
+      /* busy-wait 5ms */
+    }
+    (store as unknown as { tick(): void }).tick(); // → cooldown
+    (store as unknown as { tick(): void }).tick(); // → healthy (retryOriginalAt also expired)
+
+    expect(store.get("m/b").state).toBe("healthy");
+    expect(transitions.map((t) => [t[1], t[2]])).toContainEqual(["cooldown", "healthy"]);
+    expect(store.get("m/b").cooldownExpiresAt).toBeNull();
+    expect(store.get("m/b").retryOriginalAt).toBeNull();
+  });
+
+  it("tick does not fire onTransition when model is healthy and nothing to do", () => {
+    const transitions: Array<unknown> = [];
+    const store = makeStore((key, from, to) => transitions.push([key, from, to]));
+    store.get("m/c"); // seed a healthy entry
+    (store as unknown as { tick(): void }).tick();
+    expect(transitions).toHaveLength(0);
   });
 });

@@ -75,23 +75,25 @@ Place `model-fallback.json` at either:
     "429"
   ],
   "logging": true,
+  "logLevel": "info",
   "logPath": "~/.local/share/opencode/logs/model-fallback.log"
 }
 ```
 
 ### All config fields
 
-| Field                           | Type     | Default                                           | Description                                                              |
-| ------------------------------- | -------- | ------------------------------------------------- | ------------------------------------------------------------------------ |
-| `enabled`                       | boolean  | `true`                                            | Enable/disable the plugin                                                |
-| `defaults.fallbackOn`           | string[] | all categories                                    | Error categories that trigger fallback                                   |
-| `defaults.cooldownMs`           | number   | `300000` (5 min)                                  | How long before a rate-limited model enters cooldown. Min: 10000         |
-| `defaults.retryOriginalAfterMs` | number   | `900000` (15 min)                                 | How long before a cooldown model is considered healthy again. Min: 10000 |
-| `defaults.maxFallbackDepth`     | number   | `3`                                               | Maximum number of fallbacks per session. Max: 10                         |
-| `agents`                        | object   | `{"*": {}}`                                       | Per-agent fallback chains (see below)                                    |
-| `patterns`                      | string[] | see defaults                                      | Case-insensitive substrings to match in retry messages                   |
-| `logging`                       | boolean  | `true`                                            | Write structured logs to `logPath`                                       |
-| `logPath`                       | string   | `~/.local/share/opencode/logs/model-fallback.log` | Log file path (must be within `$HOME`)                                   |
+| Field                           | Type     | Default                                           | Description                                                                                                                        |
+| ------------------------------- | -------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`                       | boolean  | `true`                                            | Enable/disable the plugin                                                                                                          |
+| `defaults.fallbackOn`           | string[] | all categories                                    | Error categories that trigger fallback                                                                                             |
+| `defaults.cooldownMs`           | number   | `300000` (5 min)                                  | How long before a rate-limited model enters cooldown. Min: 10000                                                                   |
+| `defaults.retryOriginalAfterMs` | number   | `900000` (15 min)                                 | How long before a cooldown model is considered healthy again. Min: 10000                                                           |
+| `defaults.maxFallbackDepth`     | number   | `3`                                               | Maximum number of fallbacks per session. Max: 10                                                                                   |
+| `agents`                        | object   | `{"*": {}}`                                       | Per-agent fallback chains (see below)                                                                                              |
+| `patterns`                      | string[] | see defaults                                      | Case-insensitive substrings to match in retry messages                                                                             |
+| `logging`                       | boolean  | `true`                                            | Write structured logs to `logPath`                                                                                                 |
+| `logLevel`                      | string   | `"info"`                                          | Minimum log level written to file: `"info"` suppresses debug noise, `"debug"` logs every event (useful for incident investigation) |
+| `logPath`                       | string   | `~/.local/share/opencode/logs/model-fallback.log` | Log file path (must be within `$HOME`)                                                                                             |
 
 ### Error categories
 
@@ -210,6 +212,8 @@ tail -f ~/.local/share/opencode/logs/model-fallback.log | jq .
 
 Key log events: `plugin.init`, `retry.detected`, `fallback.success`, `fallback.exhausted`, `health.transition`, `recovery.available`
 
+To see the full event stream (including `event.received` and `retry.nomatch`), set `"logLevel": "debug"` in your config and restart OpenCode.
+
 ## Release automation
 
 - Uses **Conventional Commits** + `semantic-release` for automated versioning/changelog/release notes
@@ -223,7 +227,7 @@ Key log events: `plugin.init`, `retry.detected`, `fallback.success`, `fallback.e
 ```bash
 bun install
 bun run lint          # lint checks
-bun test              # 101 tests
+bun test              # 137 tests across 11 files
 bunx tsc --noEmit     # type check
 bun run build         # build to dist/
 ```

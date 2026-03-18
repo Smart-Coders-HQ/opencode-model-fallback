@@ -1,8 +1,8 @@
-import { describe, it, expect } from "bun:test";
-import { parseConfig, mergeWithDefaults } from "../src/config/schema.js";
-import { isOldFormat, migrateOldConfig } from "../src/config/migrate.js";
-import { DEFAULT_CONFIG } from "../src/config/defaults.js";
+import { describe, expect, it } from "bun:test";
 import { homedir } from "os";
+import { DEFAULT_CONFIG } from "../src/config/defaults.js";
+import { isOldFormat, migrateOldConfig } from "../src/config/migrate.js";
+import { mergeWithDefaults, parseConfig } from "../src/config/schema.js";
 
 describe("parseConfig", () => {
   it("accepts a valid config", () => {
@@ -66,6 +66,31 @@ describe("parseConfig", () => {
     expect(config.defaults?.retryOriginalAfterMs).toBe(120_000);
     expect(config.defaults?.cooldownMs).toBeUndefined();
     expect(warnings.some((warning) => warning.includes("defaults.cooldownMs"))).toBe(true);
+  });
+
+  it("handles config with valid enabled:false and invalid cooldownMs", () => {
+    const raw = {
+      enabled: false,
+      defaults: { cooldownMs: -1 },
+    };
+
+    const { config, warnings } = parseConfig(raw);
+
+    expect(config.enabled).toBe(false);
+    expect(config.defaults?.cooldownMs).toBeUndefined();
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(warnings.some((w) => w.includes("cooldownMs"))).toBe(true);
+  });
+
+  it("handles config with agents: null", () => {
+    const raw = {
+      agents: null,
+    };
+
+    const { config, warnings } = parseConfig(raw);
+
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(config.agents).toBeUndefined();
   });
 });
 

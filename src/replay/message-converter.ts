@@ -12,7 +12,17 @@ type PromptPart =
 export function convertPartsForPrompt(parts: Part[]): PromptPart[] {
   const result: PromptPart[] = [];
 
+  // Handle null/undefined parts array
+  if (!parts || !Array.isArray(parts)) {
+    return result;
+  }
+
   for (const part of parts) {
+    // Skip null/undefined parts or parts without a type field
+    if (!part || typeof part !== "object" || !("type" in part)) {
+      continue;
+    }
+
     // Skip synthetic or ignored text parts
     if (part.type === "text") {
       if (part.synthetic || part.ignored) continue;

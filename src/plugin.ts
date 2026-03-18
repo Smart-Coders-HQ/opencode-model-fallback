@@ -18,7 +18,7 @@ import type { ModelKey } from "./types.js";
 export const createPlugin: Plugin = async ({ client, directory }) => {
   const { config, path: configPath, warnings, migrated } = loadConfig(directory);
 
-  const logger = new Logger(client, config.logPath, config.logging);
+  const logger = new Logger(client, config.logPath, config.logging, config.logLevel);
 
   const cmdPath = join(homedir(), ".config/opencode/commands/fallback-status.md");
   try {
@@ -129,6 +129,8 @@ export async function handleEvent(
   logger: Logger,
   directory: string
 ): Promise<void> {
+  logger.debug("event.received", { type: event.type });
+
   if (event.type === "session.status") {
     const { sessionID, status } = event.properties;
 
@@ -196,6 +198,7 @@ async function handleRetry(
 ): Promise<void> {
   // Check if the retry message matches any fallback-triggering pattern
   if (!matchesAnyPattern(message, config.patterns)) {
+    logger.debug("retry.nomatch", { sessionId, message });
     return;
   }
 

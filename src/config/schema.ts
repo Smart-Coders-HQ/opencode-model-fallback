@@ -48,6 +48,7 @@ export const pluginConfigSchema = z
     agents: z.record(z.string(), agentConfig).optional(),
     patterns: z.array(z.string()).optional(),
     logging: z.boolean().optional(),
+    logLevel: z.enum(["debug", "info"]).optional(),
     logPath: logPathSchema.optional(),
     agentDirs: z.array(z.string()).optional(),
   })
@@ -73,6 +74,7 @@ export function parseConfig(raw: unknown): {
     "agents",
     "patterns",
     "logging",
+    "logLevel",
     "logPath",
     "agentDirs",
   ]);
@@ -222,6 +224,17 @@ export function parseConfig(raw: unknown): {
     }
   }
 
+  if (obj.logLevel !== undefined) {
+    const logLevelResult = z.enum(["debug", "info"]).safeParse(obj.logLevel);
+    if (logLevelResult.success) {
+      config.logLevel = logLevelResult.data;
+    } else {
+      warnings.push(
+        `Config warning at logLevel: ${logLevelResult.error.issues[0].message} — using default`
+      );
+    }
+  }
+
   if (obj.logPath !== undefined) {
     const logPathResult = logPathSchema.safeParse(obj.logPath);
     if (logPathResult.success) {
@@ -264,6 +277,7 @@ export function mergeWithDefaults(raw: RawConfig): import("../types.js").PluginC
     agents: raw.agents ?? def.agents,
     patterns: raw.patterns ?? def.patterns,
     logging: raw.logging ?? def.logging,
+    logLevel: raw.logLevel ?? def.logLevel,
     logPath,
     agentDirs: raw.agentDirs ?? def.agentDirs,
   };

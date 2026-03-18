@@ -59,6 +59,7 @@ export interface PluginConfig {
   agents: Record<string, AgentConfig>;
   patterns: string[];
   logging: boolean;
+  logLevel: "debug" | "info";
   logPath: string;
   agentDirs: string[];
 }

@@ -1,6 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { resolveFallbackModel } from "../src/resolution/fallback-resolver.js";
+import { describe, expect, it } from "bun:test";
 import { resolveFallbackModels } from "../src/resolution/agent-resolver.js";
+import { resolveFallbackModel } from "../src/resolution/fallback-resolver.js";
 import { ModelHealthStore } from "../src/state/model-health.js";
 import { SessionStateStore } from "../src/state/session-state.js";
 import type { PluginConfig } from "../src/types.js";
@@ -64,6 +64,27 @@ describe("resolveFallbackModel", () => {
       destroy();
     }
   });
+
+  it("returns null when fallback chain is empty", () => {
+    const { store, destroy } = makeHealth();
+    try {
+      const result = resolveFallbackModel([], "a/1", store);
+      expect(result).toBeNull();
+    } finally {
+      destroy();
+    }
+  });
+
+  it("returns null when chain contains only the current model", () => {
+    const { store, destroy } = makeHealth();
+    try {
+      const chain = ["a/1"];
+      const result = resolveFallbackModel(chain, "a/1", store);
+      expect(result).toBeNull();
+    } finally {
+      destroy();
+    }
+  });
 });
 
 describe("resolveFallbackModels", () => {
@@ -81,7 +102,9 @@ describe("resolveFallbackModels", () => {
     },
     patterns: ["rate limit"],
     logging: false,
+    logLevel: "info",
     logPath: "/tmp/test.log",
+    agentDirs: [],
   };
 
   it("returns agent-specific chain when agent matches", () => {
@@ -142,5 +165,34 @@ describe("SessionStateStore", () => {
     // After delete, get returns fresh state
     const state = store.get("s5");
     expect(state.fallbackDepth).toBe(0);
+  });
+
+  it("recordFallback sets trigger field to 'reactive'", () => {
+    const store = new SessionStateStore();
+    store.setOriginalModel("s6", "a/orig");
+    store.recordFallback("s6", "a/orig", "a/fallback", "rate_limit", "coder");
+
+    const state = store.get("s6");
+    expect(state.fallbackHistory).toHaveLength(1);
+    expect(state.fallbackHistory[0].trigger).toBe("reactive");
+  });
+
+  it("recordPreemptiveRedirect sets trigger field to 'preemptive'", () => {
+    const store = new SessionStateStore();
+    store.setOriginalModel("s7", "a/orig");
+    store.recordPreemptiveRedirect("s7", "a/orig", "a/fallback", "coder");
+
+    const state = store.get("s7");
+    expect(state.fallbackHistory).toHaveLength(1);
+    expect(state.fallbackHistory[0].trigger).toBe("preemptive");
+  });
+
+  it("recordPreemptiveRedirect sets reason to 'rate_limit'", () => {
+    const store = new SessionStateStore();
+    store.setOriginalModel("s8", "a/orig");
+    store.recordPreemptiveRedirect("s8", "a/orig", "a/fallback", "coder");
+
+    const state = store.get("s8");
+    expect(state.fallbackHistory[0].reason).toBe("rate_limit");
   });
 });

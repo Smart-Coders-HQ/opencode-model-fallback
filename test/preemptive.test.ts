@@ -1,7 +1,7 @@
-import { describe, it, expect, afterEach } from "bun:test";
+import { afterEach, describe, expect, it } from "bun:test";
+import { Logger } from "../src/logging/logger.js";
 import { tryPreemptiveRedirect } from "../src/preemptive.js";
 import { FallbackStore } from "../src/state/store.js";
-import { Logger } from "../src/logging/logger.js";
 import type { PluginConfig } from "../src/types.js";
 import { makeMockClient } from "./helpers/mock-client.js";
 
@@ -21,6 +21,7 @@ const BASE_CONFIG: PluginConfig = {
   },
   patterns: ["rate limit"],
   logging: false,
+  logLevel: "info",
   logPath: "/tmp/test-fallback.log",
   agentDirs: [],
 };

@@ -9,7 +9,7 @@ OpenCode plugin that adds ordered model fallback chains with a health state mach
 ## Commands
 
 ```bash
-bun test              # Run all unit tests (101 tests across 10 files)
+bun test              # Run all unit tests (137 tests across 11 files)
 bunx tsc --noEmit     # Type check
 bun run build         # Build to dist/
 ```

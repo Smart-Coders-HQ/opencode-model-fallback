@@ -61,6 +61,8 @@ export function tryPreemptiveRedirect(
 
   logger.info("preemptive.redirect", {
     sessionId,
+    agentName,
+    agentFile: sessionState.agentFile,
     from: modelKey,
     to: fallbackModel,
   });

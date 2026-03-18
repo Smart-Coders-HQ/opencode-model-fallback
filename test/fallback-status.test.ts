@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { createFallbackStatusTool } from "../src/tools/fallback-status.js";
 import { Logger } from "../src/logging/logger.js";
 import { FallbackStore } from "../src/state/store.js";
+import { createFallbackStatusTool } from "../src/tools/fallback-status.js";
 import type { PluginConfig } from "../src/types.js";
 import { makeMockClient } from "./helpers/mock-client.js";
 
@@ -18,6 +18,7 @@ const BASE_CONFIG: PluginConfig = {
   },
   patterns: ["rate limit"],
   logging: false,
+  logLevel: "info",
   logPath: "/tmp/test-fallback.log",
   agentDirs: [],
 };

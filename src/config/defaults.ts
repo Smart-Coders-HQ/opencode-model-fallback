@@ -31,6 +31,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
   },
   patterns: DEFAULT_PATTERNS,
   logging: true,
+  logLevel: "info" as const,
   logPath: DEFAULT_LOG_PATH,
   agentDirs: [],
 };

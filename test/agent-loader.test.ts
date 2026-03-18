@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { mkdirSync, writeFileSync, rmSync, mkdtempSync } from "fs";
-import { join } from "path";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
+import { join } from "path";
 import { loadAgentFallbackConfigs } from "../src/config/agent-loader.js";
 import { loadConfig } from "../src/config/loader.js";
 
@@ -337,5 +337,168 @@ fallback:
       "anthropic/claude-sonnet-4-20250514",
     ]);
     expect(result.config.agents["*"].fallbackModels).toEqual(["google/gemini-flash-2-5"]);
+  });
+});
+
+describe("loadAgentFallbackConfigs — path traversal security", () => {
+  let dir: string;
+  let agentsDir: string;
+
+  beforeEach(() => {
+    dir = mktemp();
+    agentsDir = join(dir, ".opencode", "agents");
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("rejects symlinks pointing outside the base directory", () => {
+    const { symlinkSync } = require("fs");
+    mkdirSync(agentsDir, { recursive: true });
+
+    // Create a file outside the base directory
+    const outsideDir = mktemp();
+    try {
+      const outsideFile = join(outsideDir, "malicious.md");
+      writeFileSync(
+        outsideFile,
+        `---
+name: MaliciousAgent
+fallback:
+  models:
+    - anthropic/claude-sonnet-4-20250514
+---
+`
+      );
+
+      // Create a symlink inside agentsDir pointing to the outside file
+      const symlinkPath = join(agentsDir, "symlink.md");
+      try {
+        symlinkSync(outsideFile, symlinkPath);
+      } catch (err) {
+        // Skip test if symlinks are not supported (e.g., Windows without admin)
+        console.warn("Skipping symlink test: symlinks not supported");
+        return;
+      }
+
+      // Load configs — symlinked file should NOT be included
+      const configs = loadAgentFallbackConfigs(dir, dir);
+      expect(configs["MaliciousAgent"]).toBeUndefined();
+    } finally {
+      rmSync(outsideDir, { recursive: true, force: true });
+    }
+  });
+
+  it("includes valid nested files within the recursive agent/ directory", () => {
+    // .opencode/agents/ is non-recursive; .opencode/agent/ is recursive
+    const agentDir = join(dir, ".opencode", "agent");
+    const subDir = join(agentDir, "team");
+    mkdirSync(subDir, { recursive: true });
+
+    writeFileSync(
+      join(subDir, "nested.md"),
+      `---
+name: NestedAgent
+fallback:
+  models:
+    - anthropic/claude-sonnet-4-20250514
+---
+`
+    );
+
+    const configs = loadAgentFallbackConfigs(dir, dir);
+    expect(configs["NestedAgent"]).toBeDefined();
+    expect(configs["NestedAgent"].fallbackModels).toEqual(["anthropic/claude-sonnet-4-20250514"]);
+  });
+});
+
+describe("parseFrontmatter — YAML safe schema", () => {
+  let dir: string;
+  let agentsDir: string;
+
+  beforeEach(() => {
+    dir = mktemp();
+    agentsDir = join(dir, ".opencode", "agents");
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("rejects YAML with !!js/function tag (malicious code execution)", () => {
+    mkdirSync(agentsDir, { recursive: true });
+
+    // Write a file with malicious YAML frontmatter
+    writeFileSync(
+      join(agentsDir, "malicious.md"),
+      `---
+name: MaliciousAgent
+fallback:
+  models: !!js/function >
+    function() { require('fs').unlinkSync('/etc/passwd'); }
+---
+# Agent description
+`
+    );
+
+    // Load configs — malicious file should produce no config entry
+    const configs = loadAgentFallbackConfigs(dir, dir);
+    expect(configs["MaliciousAgent"]).toBeUndefined();
+  });
+
+  it("parses valid YAML with nested objects successfully", () => {
+    mkdirSync(agentsDir, { recursive: true });
+
+    writeFileSync(
+      join(agentsDir, "valid.md"),
+      `---
+name: ValidAgent
+model: openai/gpt-5
+fallback:
+  models:
+    - anthropic/claude-sonnet-4-20250514
+    - google/gemini-flash-2-5
+metadata:
+  description: A valid agent
+  version: 1.0
+---
+# Agent description
+`
+    );
+
+    const configs = loadAgentFallbackConfigs(dir, dir);
+    expect(configs["ValidAgent"]).toBeDefined();
+    expect(configs["ValidAgent"].fallbackModels).toEqual([
+      "anthropic/claude-sonnet-4-20250514",
+      "google/gemini-flash-2-5",
+    ]);
+  });
+
+  it("rejects YAML with other dangerous tags", () => {
+    mkdirSync(agentsDir, { recursive: true });
+
+    // Try various dangerous YAML tags
+    const dangerousTags = ["!!python/object/apply:os.system", "!!java/object", "!!ruby/object"];
+
+    for (const tag of dangerousTags) {
+      const filename = `dangerous-${dangerousTags.indexOf(tag)}.md`;
+      writeFileSync(
+        join(agentsDir, filename),
+        `---
+name: DangerousAgent${dangerousTags.indexOf(tag)}
+fallback:
+  models: ${tag}
+    - ls -la
+---
+`
+      );
+    }
+
+    const configs = loadAgentFallbackConfigs(dir, dir);
+    // None of the dangerous agents should be loaded
+    expect(configs["DangerousAgent0"]).toBeUndefined();
+    expect(configs["DangerousAgent1"]).toBeUndefined();
+    expect(configs["DangerousAgent2"]).toBeUndefined();
   });
 });
