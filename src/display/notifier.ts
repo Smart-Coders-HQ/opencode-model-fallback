@@ -9,8 +9,8 @@ export async function notifyFallback(
   to: ModelKey,
   reason: ErrorCategory
 ): Promise<void> {
-  const fromLabel = from ? shortModelName(from) : "current model";
-  const message = `Model fallback: switched from ${fromLabel} to ${shortModelName(to)} (${reason})`;
+  const fromLabel = from ? labelModel(from) : "current model";
+  const message = `Model fallback: switched from ${fromLabel} to ${labelModel(to)} (${reason})`;
   await client.tui
     .showToast({
       body: {
@@ -30,7 +30,7 @@ export async function notifyFallbackActive(
   originalModel: ModelKey,
   currentModel: ModelKey
 ): Promise<void> {
-  const message = `Using ${shortModelName(currentModel)} (fallback from ${shortModelName(originalModel)})`;
+  const message = `Using ${labelModel(currentModel)} (fallback from ${labelModel(originalModel)})`;
   await client.tui
     .showToast({
       body: {
@@ -44,7 +44,7 @@ export async function notifyFallbackActive(
 }
 
 export async function notifyRecovery(client: Client, originalModel: ModelKey): Promise<void> {
-  const message = `Original model ${shortModelName(originalModel)} is available again`;
+  const message = `Original model ${labelModel(originalModel)} is available again`;
   await client.tui
     .showToast({
       body: {
@@ -57,8 +57,10 @@ export async function notifyRecovery(client: Client, originalModel: ModelKey): P
     .catch(() => {});
 }
 
-function shortModelName(key: ModelKey): string {
-  // "anthropic/claude-sonnet-4-20250514" → "claude-sonnet-4-20250514"
-  const parts = key.split("/");
-  return parts.length > 1 ? parts.slice(1).join("/") : key;
+export function labelModel(key: ModelKey): string {
+  const slash = key.indexOf("/");
+  if (slash === -1) return key;
+  const provider = key.slice(0, slash);
+  const model = key.slice(slash + 1);
+  return `${model} [${provider}]`;
 }
