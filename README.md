@@ -227,7 +227,7 @@ To see the full event stream (including `event.received` and `retry.nomatch`), s
 ```bash
 bun install
 bun run lint          # lint checks
-bun test              # 137 tests across 11 files
+bun test              # 145 tests across 11 files
 bunx tsc --noEmit     # type check
 bun run build         # build to dist/
 ```

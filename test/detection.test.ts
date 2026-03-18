@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
+import { DEFAULT_PATTERNS } from "../src/config/defaults.js";
 import { classifyError } from "../src/detection/classifier.js";
 import { matchesAnyPattern } from "../src/detection/patterns.js";
-import { DEFAULT_PATTERNS } from "../src/config/defaults.js";
 
 describe("classifyError", () => {
   it("classifies 429 status code as rate_limit", () => {

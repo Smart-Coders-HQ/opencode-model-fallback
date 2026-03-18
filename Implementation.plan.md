@@ -315,7 +315,7 @@ Addresses two problems: wasted 429 round-trips per message after a successful fa
 
 ## Verification Plan
 
-1. **Unit tests** (per module): config validation, pattern matching, classification, health transitions, chain resolution, message conversion, agent loader, preemptive redirect, plugin events, fallback-status tool, tick recovery transitions, path traversal security, YAML schema enforcement — **137/137 passing**
+1. **Unit tests** (per module): config validation, pattern matching, classification, health transitions, chain resolution, message conversion, agent loader, preemptive redirect, plugin events, fallback-status tool, tick recovery transitions, path traversal security, YAML schema enforcement — **145/145 passing**
 2. **Integration tests** (mock client): full fallback flow, cascading, max depth, concurrent events, session deletion — **complete**
 3. **Manual E2E test**: Install as local plugin, configure fallback chains, trigger rate limit, verify:
    - Detection logged correctly
