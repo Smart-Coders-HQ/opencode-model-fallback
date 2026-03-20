@@ -45,6 +45,18 @@ jobs:
       - name: Build
         run: bun run build
 
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@cb9bde2e2525e640591a934b1fd28eef1dcaf5e5 # v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+          git_tag_gpgsign: true
+
+      - name: Set GPG_TTY
+        run: echo "GPG_TTY=$(tty)" >> $GITHUB_ENV
+
       - name: Release
         run: bun run release
         env:

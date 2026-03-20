@@ -102,6 +102,29 @@ bd memories <keyword>       # Search saved memories
 - Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
 - Do NOT use `bd edit` — it opens an interactive editor that blocks agents
 
+## GPG Signing
+
+Commits and tags are signed with GPG key `60BFBD78D728EEE4`.
+
+**Local — unlock the GPG agent (run once per session):**
+
+```bash
+./scripts/gpg-unlock.sh
+```
+
+Fetches the passphrase via `op environment read opencode-env` (1Password Environments) and presets it into `gpg-agent` so subsequent `git commit`/`git tag` calls don't prompt. Env var overrides:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `GPG_SIGN_KEY` | `60BFBD78D728EEE4` | Key ID to unlock |
+| `OPENCODE_MANIFEST_SIGN_1PASSWORD_ENV_ID` | `opencode-env` | 1Password environment name |
+| `OPENCODE_MANIFEST_SIGN_1PASSWORD_ACCOUNT` | _(CLI default)_ | 1Password account |
+| `OPENCODE_MANIFEST_SIGN_1PASSWORD_VAR` | `OPENCODE_MANIFEST_SIGN_PASSPHRASE` | Variable name in the env |
+
+**CI — GitHub Actions:**
+
+`release.yml` uses `crazy-max/ghaction-import-gpg` with `secrets.GPG_PRIVATE_KEY` and `secrets.GPG_PASSPHRASE` stored as org-level GitHub secrets. The CI key is a dedicated key separate from the personal signing key — rotate it independently without touching local config. No 1Password service account is needed in CI.
+
 ## Testing
 
 Unit tests live in `test/`. Run with `bun test`.
