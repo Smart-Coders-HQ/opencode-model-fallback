@@ -125,7 +125,7 @@ Fetches the passphrase via `op environment read opencode-env` (1Password Environ
 
 `release-gate.yml` runs trusted validation on `push` to `main`. `release.yml` is a privileged `workflow_run` that fires only after `Release Gate` succeeds for a `push` on `main`.
 
-`release.yml` imports the CI GPG key from `secrets.GPG_PRIVATE_KEY`, presets the passphrase from `secrets.GPG_PASSPHRASE`, and enables commit/tag signing before `semantic-release`. The CI key is a dedicated key separate from the personal signing key — rotate it independently without touching local config. No 1Password service account is needed in CI.
+`release.yml` imports the CI GPG key from `secrets.GPG_PRIVATE_KEY`, presets the passphrase from `secrets.GPG_PASSPHRASE`, and enables commit signing before `semantic-release`. The CI key is a dedicated key separate from the personal signing key — rotate it independently without touching local config. No 1Password service account is needed in CI.
 
 ## Testing
 

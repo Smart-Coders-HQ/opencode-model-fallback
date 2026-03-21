@@ -77,7 +77,6 @@ jobs:
           fi
           git config --global user.signingkey "$KEY_ID"
           git config --global commit.gpgsign true
-          git config --global tag.gpgsign true
 
       - name: Configure git auth for release
         run: git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
