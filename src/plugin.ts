@@ -302,6 +302,7 @@ export async function handleIdle(
   logger.info("recovery.available", {
     sessionId,
     originalModel: state.originalModel,
+    currentModel: state.currentModel,
   });
   await notifyRecovery(client, state.originalModel);
   state.recoveryNotifiedForModel = state.originalModel;
