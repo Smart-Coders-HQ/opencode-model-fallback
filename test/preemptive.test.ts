@@ -197,7 +197,7 @@ describe("tryPreemptiveRedirect — rate-limited model", () => {
 
     expect(result.redirected).toBe(true);
     const state = store.sessions.get("s1");
-    expect(state.fallbackDepth).toBe(0);
+    expect(state.fallbackDepth).toBe(1);
     expect(state.fallbackHistory).toHaveLength(1);
     expect(state.fallbackHistory[0]).toMatchObject({
       fromModel: "openai/gpt-5.3-codex",

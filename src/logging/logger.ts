@@ -1,5 +1,5 @@
 import type { PluginInput } from "@opencode-ai/plugin";
-import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "fs";
+import { appendFileSync, mkdirSync, writeFileSync } from "fs";
 import { dirname } from "path";
 
 type Client = PluginInput["client"];
@@ -19,6 +19,7 @@ export class Logger {
   private enabled: boolean;
   private minLevel: "debug" | "info";
   private dirCreated = false;
+  private fileErrorNotified = false;
 
   constructor(
     client: Client,
@@ -33,11 +34,12 @@ export class Logger {
   }
 
   log(level: LogLevel, event: string, fields: Record<string, unknown> = {}): void {
+    const sanitizedFields = sanitizeFields(fields);
     const entry: LogEntry = {
       ts: new Date().toISOString(),
       level,
       event,
-      ...fields,
+      ...sanitizedFields,
     };
 
     const shouldWrite = this.enabled && (this.minLevel === "debug" || level !== "debug");
@@ -47,7 +49,7 @@ export class Logger {
 
     // Always log to OpenCode's native log system at info+ level
     if (level !== "debug") {
-      const message = `[model-fallback] ${event}${Object.keys(fields).length ? " " + JSON.stringify(fields) : ""}`;
+      const message = `[model-fallback] ${event}${Object.keys(sanitizedFields).length ? " " + JSON.stringify(sanitizedFields) : ""}`;
       this.client.app
         .log({
           body: { service: "model-fallback", level, message },
@@ -81,12 +83,75 @@ export class Logger {
         this.dirCreated = true;
       }
       // Create the log file with owner-only permissions if it doesn't exist yet
-      if (!existsSync(this.logPath)) {
-        writeFileSync(this.logPath, "", { mode: 0o600 });
+      try {
+        writeFileSync(this.logPath, "", { mode: 0o600, flag: "ax" });
+      } catch {
+        // file already exists — that's fine
       }
       appendFileSync(this.logPath, JSON.stringify(entry) + "\n", "utf-8");
-    } catch {
-      // Swallow file logging errors — never crash the plugin
+    } catch (err) {
+      if (!this.fileErrorNotified) {
+        this.fileErrorNotified = true;
+        const message = `[model-fallback] logging.file.write.failed ${JSON.stringify({
+          logPath: this.logPath,
+          error: summarizeError(err),
+        })}`;
+        this.client.app
+          .log({
+            body: { service: "model-fallback", level: "warn", message },
+          })
+          .catch(() => {
+            /* best-effort */
+          });
+      }
     }
   }
+}
+
+function sanitizeFields(fields: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(fields)) {
+    out[key] = sanitizeValue(key, value);
+  }
+  return out;
+}
+
+function sanitizeValue(key: string, value: unknown): unknown {
+  if (value === null || value === undefined) return value;
+
+  if (isSensitiveKey(key)) {
+    if (typeof value === "string") {
+      return { redacted: true, length: value.length };
+    }
+    if (value instanceof Error) {
+      return { redacted: true, type: value.name, code: getErrorCode(value) };
+    }
+    return { redacted: true, type: typeof value };
+  }
+
+  if (value instanceof Error) {
+    return { name: value.name, message: value.message };
+  }
+
+  return value;
+}
+
+function isSensitiveKey(key: string): boolean {
+  return /(?:^|_)(message|prompt|content|parts|error|err|stack|body)(?:$|_)/i.test(key);
+}
+
+function getErrorCode(err: Error): string | undefined {
+  const code = (err as { code?: unknown }).code;
+  return typeof code === "string" ? code : undefined;
+}
+
+function summarizeError(err: unknown): { type: string; code?: string } {
+  if (err && typeof err === "object") {
+    const e = err as { name?: unknown; code?: unknown };
+    return {
+      type: typeof e.name === "string" ? e.name : "Error",
+      code: typeof e.code === "string" ? e.code : undefined,
+    };
+  }
+  return { type: typeof err };
 }

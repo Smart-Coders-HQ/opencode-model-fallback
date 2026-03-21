@@ -4,7 +4,7 @@ import { Logger } from "../src/logging/logger.js";
 import { handleEvent, handleIdle } from "../src/plugin.js";
 import { FallbackStore } from "../src/state/store.js";
 import type { PluginConfig } from "../src/types.js";
-import { makeMockClient } from "./helpers/mock-client.js";
+import { makeMockClient, makeUserMessage } from "./helpers/mock-client.js";
 
 const BASE_CONFIG: PluginConfig = {
   enabled: true,
@@ -162,5 +162,36 @@ describe("plugin event handling", () => {
     expect(afterCompaction.currentModel).toBe("anthropic/claude-sonnet-4");
     expect(afterCompaction.agentName).toBe("coder");
     expect(afterCompaction.fallbackDepth).toBe(1);
+  });
+
+  it("uses the actual failing model in fallback toast text", async () => {
+    const { client, calls } = makeMockClient({
+      messages: [makeUserMessage("s1", "m1", "anthropic", "claude-sonnet-4", "coder")],
+    });
+    const store = makeStore();
+    const logger = new Logger(client, "/tmp/test.log", false);
+
+    store.sessions.setOriginalModel("s1", "openai/gpt-5.3-codex");
+    store.sessions.get("s1").currentModel = "anthropic/claude-sonnet-4";
+
+    const errorEvent = {
+      type: "session.error",
+      properties: {
+        sessionID: "s1",
+        error: {
+          name: "APIError",
+          data: {
+            message: "Too many requests",
+            statusCode: 429,
+          },
+        },
+      },
+    } as unknown as Event;
+
+    await handleEvent(errorEvent, client, store, BASE_CONFIG, logger, "/tmp");
+
+    expect(calls.toasts).toHaveLength(1);
+    expect(calls.toasts[0]?.message).toContain("claude-sonnet-4 [anthropic]");
+    expect(calls.toasts[0]?.message).not.toContain("gpt-5.3-codex [openai]");
   });
 });

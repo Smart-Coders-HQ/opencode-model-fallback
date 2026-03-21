@@ -5,7 +5,7 @@ OpenCode plugin that adds automatic model fallback when your primary model hits 
 ## How it works
 
 1. **Preemptive redirect** — intercepts outgoing messages via `chat.message` hook; if the target model is known to be rate-limited, redirects the message to a healthy fallback _before_ it hits the provider (no 429 round-trip)
-2. **Reactive fallback** — if a 429 still occurs (first hit, or preemptive not available), listens for `session.status: retry` events, aborts the retry loop, reverts the failed message, and replays it with the next healthy fallback model
+2. **Reactive fallback** — if a fallback-triggering error still occurs (first hit, or preemptive not available), listens for both `session.status: retry` and `session.error` (`APIError`) events, aborts the retry loop, reverts the failed message, and replays it with the next healthy fallback model
 3. Shows an inline toast notification and logs the event
 4. Tracks model health globally (rate limits are account-wide) — automatically recovers after configurable cooldown periods
 5. **Depth reset** — when the TUI reverts to the original model between messages, `fallbackDepth` resets so `maxFallbackDepth` only guards true cascading failures within a single message
@@ -176,6 +176,8 @@ With the `verbose` flag:
 
 Includes token/cost breakdown per model period.
 
+When enabled, the plugin auto-creates `~/.config/opencode/commands/fallback-status.md` at startup so the slash command is available without manual setup.
+
 ## Health state machine
 
 ```
@@ -187,13 +189,16 @@ cooldown ──[retryOriginalAfterMs elapsed]──→ healthy
 - **healthy** — model is usable; preferred for fallback selection
 - **rate_limited** — recently hit a limit; skipped when walking fallback chain
 - **cooldown** — cooling off; used as last resort if no healthy model is available
-- State transitions are checked every 30 seconds via a background timer
+- State transitions are checked every 30 seconds via a background timer (the timer is unref'ed so it does not keep the process alive)
 - When the original model recovers to healthy, a toast appears on the next `session.idle`
 
 ## Troubleshooting
 
 **Toast doesn't appear**
 The TUI notification requires an active OpenCode TUI session. Headless/API usage won't show toasts but logs are always written.
+
+**`/fallback-status` command is missing**
+The plugin writes `~/.config/opencode/commands/fallback-status.md` on startup. If the command does not appear, verify the directory is writable and check for `fallback-status.command.write.failed` in OpenCode logs.
 
 **"no fallback chain configured"**
 Your `model-fallback.json` has no `agents["*"].fallbackModels` (or no entry for the active agent). Add at least a wildcard entry with one model.
@@ -214,11 +219,14 @@ Key log events: `plugin.init`, `retry.detected`, `fallback.success`, `fallback.e
 
 To see the full event stream (including `event.received` and `retry.nomatch`), set `"logLevel": "debug"` in your config and restart OpenCode.
 
+For safety, free-form provider error text is redacted in plugin logs; use category/model/session fields for diagnosis.
+
 ## Release automation
 
 - Uses **Conventional Commits** + `semantic-release` for automated versioning/changelog/release notes
 - CI runs lint, tests, type check, and build on every push/PR via `.github/workflows/ci.yml`
-- Release workflow runs on `main` after successful CI via `.github/workflows/release.yml`
+- Trusted release gate runs on pushes to `main` via `.github/workflows/release-gate.yml`
+- Release workflow (`.github/workflows/release.yml`) runs on successful `Release Gate` completion (`workflow_run`), only for `push` events on `main`, and only when `head_sha` matches `github.sha`
 - Published as `@smart-coders-hq/opencode-model-fallback`
 - To publish to npm, set repository secret `NPM_TOKEN`
 
@@ -227,7 +235,7 @@ To see the full event stream (including `event.received` and `retry.nomatch`), s
 ```bash
 bun install
 bun run lint          # lint checks
-bun test              # 145 tests across 11 files
+bun test              # 163 tests across 16 files
 bunx tsc --noEmit     # type check
 bun run build         # build to dist/
 ```

@@ -90,6 +90,36 @@ describe("attemptFallback — happy path", () => {
     expect(health.failureCount).toBe(1);
   });
 
+  it("does not mark model as rate_limited for non-rate-limit categories", async () => {
+    const { client } = makeMockClient({
+      messages: [makeUserMessage("s1", "m1", "openai", "gpt-5.3-codex", "coder")],
+    });
+    const store = makeStore();
+    store.sessions.setOriginalModel("s1", "openai/gpt-5.3-codex");
+    const logger = new Logger(client, "/tmp/test.log", false);
+
+    await attemptFallback("s1", "5xx", client, store, BASE_CONFIG, logger, "/tmp");
+
+    const health = store.health.get("openai/gpt-5.3-codex");
+    expect(health.state).toBe("healthy");
+    expect(health.failureCount).toBe(0);
+  });
+
+  it("marks model as rate_limited for quota_exceeded", async () => {
+    const { client } = makeMockClient({
+      messages: [makeUserMessage("s1", "m1", "openai", "gpt-5.3-codex", "coder")],
+    });
+    const store = makeStore();
+    store.sessions.setOriginalModel("s1", "openai/gpt-5.3-codex");
+    const logger = new Logger(client, "/tmp/test.log", false);
+
+    await attemptFallback("s1", "quota_exceeded", client, store, BASE_CONFIG, logger, "/tmp");
+
+    const health = store.health.get("openai/gpt-5.3-codex");
+    expect(health.state).toBe("rate_limited");
+    expect(health.failureCount).toBe(1);
+  });
+
   it("increments fallback depth in session state", async () => {
     const { client } = makeMockClient({
       messages: [makeUserMessage("s1", "m1", "openai", "gpt-5.3-codex", "coder")],

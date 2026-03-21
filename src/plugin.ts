@@ -1,6 +1,6 @@
 import type { Hooks, Plugin } from "@opencode-ai/plugin";
 import type { Event } from "@opencode-ai/sdk";
-import { existsSync, mkdirSync, writeFileSync } from "fs";
+import { mkdirSync, writeFileSync } from "fs";
 import { homedir } from "os";
 import { dirname, join } from "path";
 import { resolveAgentFile, toRelativeAgentPath } from "./config/agent-loader.js";
@@ -15,23 +15,27 @@ import { FallbackStore } from "./state/store.js";
 import { createFallbackStatusTool } from "./tools/fallback-status.js";
 import type { ModelKey } from "./types.js";
 
+function resolveFallbackStatusCommandPath(): string {
+  return join(homedir(), ".config", "opencode", "commands", "fallback-status.md");
+}
+
+export function ensureFallbackStatusCommand(logger: Logger, cmdPath: string): void {
+  try {
+    mkdirSync(dirname(cmdPath), { recursive: true, mode: 0o700 });
+    writeFileSync(cmdPath, "Call the fallback-status tool and display the full output.\n", {
+      flag: "wx",
+    });
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "EEXIST") {
+      logger.warn("fallback-status.command.write.failed", { cmdPath, err });
+    }
+  }
+}
+
 export const createPlugin: Plugin = async ({ client, directory }) => {
   const { config, path: configPath, warnings, migrated } = loadConfig(directory);
 
   const logger = new Logger(client, config.logPath, config.logging, config.logLevel);
-
-  const cmdPath = join(homedir(), ".config/opencode/commands/fallback-status.md");
-  try {
-    if (!existsSync(cmdPath)) {
-      mkdirSync(dirname(cmdPath), { recursive: true });
-      writeFileSync(cmdPath, "Call the fallback-status tool and display the full output.\n");
-    }
-  } catch (err) {
-    logger.warn("fallback-status.command.write.failed", {
-      cmdPath,
-      err: String(err),
-    });
-  }
 
   logger.info("plugin.init", {
     configPath,
@@ -41,12 +45,12 @@ export const createPlugin: Plugin = async ({ client, directory }) => {
   });
 
   for (const w of warnings) {
-    logger.warn("config.warning", { message: w });
+    logger.warn("config.warning", { warning: w });
   }
 
   if (migrated) {
     logger.info("config.migrated", {
-      message: "Auto-migrated from old rate-limit-fallback.json format",
+      note: "Auto-migrated from old rate-limit-fallback.json format",
     });
   }
 
@@ -54,6 +58,9 @@ export const createPlugin: Plugin = async ({ client, directory }) => {
     logger.info("plugin.disabled");
     return {};
   }
+
+  const cmdPath = resolveFallbackStatusCommandPath();
+  ensureFallbackStatusCommand(logger, cmdPath);
 
   const store = new FallbackStore(config, logger);
 
@@ -160,8 +167,7 @@ export async function handleEvent(
           directory
         );
         if (result.success && result.fallbackModel) {
-          const state = store.sessions.get(sessionID);
-          await notifyFallback(client, state.originalModel, result.fallbackModel, category);
+          await notifyFallback(client, result.fromModel ?? null, result.fallbackModel, category);
         }
       }
     }
@@ -195,13 +201,17 @@ async function handleRetry(
 ): Promise<void> {
   // Check if the retry message matches any fallback-triggering pattern
   if (!matchesAnyPattern(message, config.patterns)) {
-    logger.debug("retry.nomatch", { sessionId, message });
+    logger.debug("retry.nomatch", { sessionId, messageLength: message.length });
     return;
   }
 
   const category = classifyError(message);
   if (!config.defaults.fallbackOn.includes(category)) {
-    logger.debug("retry.ignored", { sessionId, message, category });
+    logger.debug("retry.ignored", {
+      sessionId,
+      category,
+      messageLength: message.length,
+    });
     return;
   }
 
@@ -245,7 +255,7 @@ async function handleRetry(
 
   logger.info("retry.detected", {
     sessionId,
-    message,
+    messageLength: message.length,
     category,
     agentName: sessionState.agentName,
     agentFile: sessionState.agentFile,
@@ -262,8 +272,7 @@ async function handleRetry(
   );
 
   if (result.success && result.fallbackModel) {
-    const state = store.sessions.get(sessionId);
-    await notifyFallback(client, state.originalModel, result.fallbackModel, category);
+    await notifyFallback(client, result.fromModel ?? null, result.fallbackModel, category);
   }
 }
 

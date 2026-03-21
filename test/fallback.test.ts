@@ -195,4 +195,13 @@ describe("SessionStateStore", () => {
     const state = store.get("s8");
     expect(state.fallbackHistory[0].reason).toBe("rate_limit");
   });
+
+  it("recordPreemptiveRedirect increments fallback depth", () => {
+    const store = new SessionStateStore();
+    store.setOriginalModel("s9", "a/orig");
+    store.recordPreemptiveRedirect("s9", "a/orig", "a/fallback", "coder");
+
+    const state = store.get("s9");
+    expect(state.fallbackDepth).toBe(1);
+  });
 });

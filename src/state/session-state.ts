@@ -75,6 +75,7 @@ export class SessionStateStore {
     };
 
     state.currentModel = toModel;
+    state.fallbackDepth++;
     state.recoveryNotifiedForModel = null;
     state.fallbackHistory.push(event);
     if (agentName) state.agentName = agentName;

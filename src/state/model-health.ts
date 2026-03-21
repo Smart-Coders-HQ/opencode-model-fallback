@@ -9,8 +9,9 @@ export class ModelHealthStore {
     onTransition?: (modelKey: ModelKey, from: HealthState, to: HealthState) => void;
   }) {
     this.onTransition = opts?.onTransition;
-    // Check state transitions every 30 seconds
-    this.timer = setInterval(() => this.tick(), 30_000);
+    // Check state transitions every 30 seconds.
+    // unref() prevents this timer from keeping the process alive if the host shuts down.
+    this.timer = setInterval(() => this.tick(), 30_000).unref();
   }
 
   get(modelKey: ModelKey): ModelHealth {

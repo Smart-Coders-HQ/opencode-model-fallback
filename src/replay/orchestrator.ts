@@ -13,6 +13,7 @@ type Client = PluginInput["client"];
 export interface ReplayResult {
   success: boolean;
   fallbackModel?: ModelKey;
+  fromModel?: ModelKey | null;
   error?: string;
 }
 
@@ -71,7 +72,7 @@ export async function attemptFallback(
       const result = await client.session.messages({ path: { id: sessionId } });
       messageEntries = Array.isArray(result.data) ? result.data : [];
     } catch (err) {
-      logger.error("replay.messages.failed", { sessionId, err: String(err) });
+      logger.error("replay.messages.failed", { sessionId, err });
       return { success: false, error: "messages fetch failed" };
     }
 
@@ -161,7 +162,7 @@ export async function attemptFallback(
 
     // Mark current model as rate limited
     const currentModel = sessionState.currentModel;
-    if (currentModel) {
+    if (currentModel && shouldMarkRateLimited(reason)) {
       store.health.markRateLimited(
         currentModel,
         config.defaults.cooldownMs,
@@ -181,7 +182,7 @@ export async function attemptFallback(
       await client.session.abort({ path: { id: sessionId } });
       logger.debug("replay.abort.ok", { sessionId });
     } catch (err) {
-      logger.error("replay.abort.failed", { sessionId, err: String(err) });
+      logger.error("replay.abort.failed", { sessionId, err });
       return { success: false, error: "abort failed" };
     }
 
@@ -196,7 +197,7 @@ export async function attemptFallback(
         messageID: lastUserEntry.id,
       });
     } catch (err) {
-      logger.error("replay.revert.failed", { sessionId, err: String(err) });
+      logger.error("replay.revert.failed", { sessionId, err });
       return { success: false, error: "revert failed" };
     }
 
@@ -225,7 +226,7 @@ export async function attemptFallback(
       logger.error("replay.prompt.failed", {
         sessionId,
         fallbackModel,
-        err: String(err),
+        err,
       });
       return { success: false, error: "prompt failed" };
     }
@@ -252,10 +253,14 @@ export async function attemptFallback(
       depth: newDepth,
     });
 
-    return { success: true, fallbackModel };
+    return { success: true, fallbackModel, fromModel: currentModel };
   } finally {
     store.sessions.releaseLock(sessionId);
   }
+}
+
+function shouldMarkRateLimited(reason: ErrorCategory): boolean {
+  return reason === "rate_limit" || reason === "quota_exceeded";
 }
 
 function sanitizeParts(parts: unknown): Part[] {

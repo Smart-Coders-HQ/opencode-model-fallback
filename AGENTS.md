@@ -9,7 +9,7 @@ OpenCode plugin that adds ordered model fallback chains with a health state mach
 ## Commands
 
 ```bash
-bun test              # Run all unit tests (145 tests across 11 files)
+bun test              # Run all unit tests (163 tests across 16 files)
 bunx tsc --noEmit     # Type check
 bun run build         # Build to dist/
 ```
@@ -34,7 +34,7 @@ After each successful implementation cycle (feature, fix, refactor), execute all
 
 ```
 src/
-  plugin.ts           # Entry point — event router + chat.message hook (preemptive redirect)
+  plugin.ts           # Entry point — event router + chat.message hook + /fallback-status command bootstrap
   preemptive.ts       # Sync preemptive redirect logic for chat.message hook
   types.ts            # Shared type definitions
   config/             # Zod schema, file discovery, defaults, auto-migration
@@ -114,16 +114,18 @@ Commits and tags are signed with GPG key `60BFBD78D728EEE4`.
 
 Fetches the passphrase via `op environment read opencode-env` (1Password Environments) and presets it into `gpg-agent` so subsequent `git commit`/`git tag` calls don't prompt. Env var overrides:
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `GPG_SIGN_KEY` | `60BFBD78D728EEE4` | Key ID to unlock |
-| `OPENCODE_MANIFEST_SIGN_1PASSWORD_ENV_ID` | `opencode-env` | 1Password environment name |
-| `OPENCODE_MANIFEST_SIGN_1PASSWORD_ACCOUNT` | _(CLI default)_ | 1Password account |
-| `OPENCODE_MANIFEST_SIGN_1PASSWORD_VAR` | `OPENCODE_MANIFEST_SIGN_PASSPHRASE` | Variable name in the env |
+| Variable                                   | Default                             | Purpose                    |
+| ------------------------------------------ | ----------------------------------- | -------------------------- |
+| `GPG_SIGN_KEY`                             | `60BFBD78D728EEE4`                  | Key ID to unlock           |
+| `OPENCODE_MANIFEST_SIGN_1PASSWORD_ENV_ID`  | `opencode-env`                      | 1Password environment name |
+| `OPENCODE_MANIFEST_SIGN_1PASSWORD_ACCOUNT` | _(CLI default)_                     | 1Password account          |
+| `OPENCODE_MANIFEST_SIGN_1PASSWORD_VAR`     | `OPENCODE_MANIFEST_SIGN_PASSPHRASE` | Variable name in the env   |
 
 **CI — GitHub Actions:**
 
-`release.yml` uses `crazy-max/ghaction-import-gpg` with `secrets.GPG_PRIVATE_KEY` and `secrets.GPG_PASSPHRASE` stored as org-level GitHub secrets. The CI key is a dedicated key separate from the personal signing key — rotate it independently without touching local config. No 1Password service account is needed in CI.
+`release-gate.yml` runs trusted validation on `push` to `main`. `release.yml` is a privileged `workflow_run` that fires only after `Release Gate` succeeds for a `push` on `main`.
+
+`release.yml` imports the CI GPG key from `secrets.GPG_PRIVATE_KEY`, presets the passphrase from `secrets.GPG_PASSPHRASE`, and enables commit/tag signing before `semantic-release`. The CI key is a dedicated key separate from the personal signing key — rotate it independently without touching local config. No 1Password service account is needed in CI.
 
 ## Testing
 
@@ -132,6 +134,8 @@ Unit tests live in `test/`. Run with `bun test`.
 Integration tests for the replay orchestrator and full fallback flow exist in `test/orchestrator.test.ts`, using the mock client helper in `test/helpers/mock-client.ts`. Preemptive redirect tests are in `test/preemptive.test.ts`.
 
 Plugin event-handler hardening tests are in `test/plugin.test.ts`. `/fallback-status` tool output tests are in `test/fallback-status.test.ts`.
+
+Additional coverage includes startup command bootstrap (`test/plugin-create.test.ts`), logger redaction/fault-tolerance (`test/logger.test.ts`), fallback usage aggregation (`test/usage.test.ts`), and health-store timer lifecycle (`test/model-health-lifecycle.test.ts`).
 
 ## Config
 
