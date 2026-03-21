@@ -27,7 +27,7 @@ After each successful implementation cycle (feature, fix, refactor), execute all
 2. **Update project docs** — Keep these files in sync with the code:
    - `AGENTS.md` — Architecture diagram, test counts, file structure, key invariants
    - `Implementation.plan.md` — Phase status, verification plan test counts, new phases/tasks
-   - `README.md` — Test counts, feature descriptions, troubleshooting entries
+   - `README.md` — User-facing install, config, command usage, troubleshooting
 3. **Update metadata** — If new modules/files were added, reflect them in the architecture sections above and in `Implementation.plan.md`'s file structure
 
 ## Architecture

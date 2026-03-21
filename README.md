@@ -1,29 +1,27 @@
 # opencode-model-fallback
 
-OpenCode plugin that adds automatic model fallback when your primary model hits a rate limit or quota. Instead of waiting in a retry loop, it immediately switches to the next healthy model in a configured chain — per-agent, with a health state machine that tracks recovery.
+OpenCode plugin that automatically switches to the next model in a configured fallback chain when the current one hits a rate limit, quota error, timeout, overload, or configured 5xx path.
 
-## How it works
+## Features
 
-1. **Preemptive redirect** — intercepts outgoing messages via `chat.message` hook; if the target model is known to be rate-limited, redirects the message to a healthy fallback _before_ it hits the provider (no 429 round-trip)
-2. **Reactive fallback** — if a fallback-triggering error still occurs (first hit, or preemptive not available), listens for both `session.status: retry` and `session.error` (`APIError`) events, aborts the retry loop, reverts the failed message, and replays it with the next healthy fallback model
-3. Shows an inline toast notification and logs the event
-4. Tracks model health globally (rate limits are account-wide) — automatically recovers after configurable cooldown periods
-5. **Depth reset** — when the TUI reverts to the original model between messages, `fallbackDepth` resets so `maxFallbackDepth` only guards true cascading failures within a single message
+- Preemptive redirect via `chat.message` when a model is already known to be rate-limited
+- Reactive fallback from both `session.status` retry events and `session.error` API errors
+- Per-agent ordered fallback chains with `"*"` wildcard support
+- Global model health tracking with automatic recovery windows
+- `/fallback-status` slash command for session depth, history, and model health
+- Structured logs with provider free-form error text redacted
 
 ## Installation
 
-Add to the `plugin` array in your `~/.config/opencode/opencode.jsonc`:
+Add the plugin to `~/.config/opencode/opencode.jsonc`:
 
 ```jsonc
 {
-  "plugin": [
-    // ... existing plugins
-    "@smart-coders-hq/opencode-model-fallback",
-  ],
+  "plugin": ["@smart-coders-hq/opencode-model-fallback"],
 }
 ```
 
-Or load locally during development:
+For local development:
 
 ```jsonc
 {
@@ -31,14 +29,14 @@ Or load locally during development:
 }
 ```
 
-Then create a config file (see [Configuration](#configuration)).
-
 ## Configuration
 
-Place `model-fallback.json` at either:
+Create `model-fallback.json` in either:
 
-- `.opencode/model-fallback.json` — project-local
-- `~/.config/opencode/model-fallback.json` — global
+- `.opencode/model-fallback.json`
+- `~/.config/opencode/model-fallback.json`
+
+Minimal example:
 
 ```json
 {
@@ -63,49 +61,22 @@ Place `model-fallback.json` at either:
       ]
     }
   },
-  "patterns": [
-    "rate limit",
-    "usage limit",
-    "too many requests",
-    "quota exceeded",
-    "overloaded",
-    "capacity exceeded",
-    "credits exhausted",
-    "billing limit",
-    "429"
-  ],
   "logging": true,
   "logLevel": "info",
   "logPath": "~/.local/share/opencode/logs/model-fallback.log"
 }
 ```
 
-### All config fields
+Most important knobs:
 
-| Field                           | Type     | Default                                           | Description                                                                                                                        |
-| ------------------------------- | -------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `enabled`                       | boolean  | `true`                                            | Enable/disable the plugin                                                                                                          |
-| `defaults.fallbackOn`           | string[] | all categories                                    | Error categories that trigger fallback                                                                                             |
-| `defaults.cooldownMs`           | number   | `300000` (5 min)                                  | How long before a rate-limited model enters cooldown. Min: 10000                                                                   |
-| `defaults.retryOriginalAfterMs` | number   | `900000` (15 min)                                 | How long before a cooldown model is considered healthy again. Min: 10000                                                           |
-| `defaults.maxFallbackDepth`     | number   | `3`                                               | Maximum number of fallbacks per session. Max: 10                                                                                   |
-| `agents`                        | object   | `{"*": {}}`                                       | Per-agent fallback chains (see below)                                                                                              |
-| `patterns`                      | string[] | see defaults                                      | Case-insensitive substrings to match in retry messages                                                                             |
-| `logging`                       | boolean  | `true`                                            | Write structured logs to `logPath`                                                                                                 |
-| `logLevel`                      | string   | `"info"`                                          | Minimum log level written to file: `"info"` suppresses debug noise, `"debug"` logs every event (useful for incident investigation) |
-| `logPath`                       | string   | `~/.local/share/opencode/logs/model-fallback.log` | Log file path (must be within `$HOME`)                                                                                             |
+- `defaults.fallbackOn` - which error categories trigger fallback
+- `defaults.cooldownMs` - how long a rate-limited model stays unavailable
+- `defaults.retryOriginalAfterMs` - when a cooled-down model becomes healthy again
+- `defaults.maxFallbackDepth` - max cascading fallbacks within one message
+- `agents` - ordered fallback chains per agent
+- `logging`, `logLevel`, `logPath` - structured file logging controls
 
-### Error categories
-
-- `rate_limit` — 429, "rate limit", "too many requests", "usage limit"
-- `quota_exceeded` — "quota exceeded", "credits exhausted", "billing limit"
-- `overloaded` — "overloaded", "capacity exceeded"
-- `timeout` — "timeout", "timed out"
-- `5xx` — 500/502/503/504, "internal server error", "bad gateway"
-
-## Per-agent chains
-
-Configure different fallback chains for different agents using the agent name as the key. The `"*"` wildcard is used for any agent without a specific entry.
+Per-agent example:
 
 ```json
 {
@@ -130,120 +101,54 @@ Configure different fallback chains for different agents using the agent name as
 }
 ```
 
-Models are tried in order. Rate-limited models are skipped; cooldown models are used as a last resort.
+If you still have `rate-limit-fallback.json`, it is discovered and auto-migrated on load.
 
-## Migrating from opencode-rate-limit-fallback
-
-If you have an existing `rate-limit-fallback.json` config, the plugin auto-migrates it on load — no manual steps needed.
-
-**Old format:**
-
-```json
-{
-  "fallbackModel": "anthropic/claude-opus-4-5",
-  "cooldownMs": 300000,
-  "patterns": ["rate limit"],
-  "logging": true
-}
-```
-
-**Automatically converted to:**
-
-```json
-{
-  "agents": { "*": { "fallbackModels": ["anthropic/claude-opus-4-5"] } },
-  "defaults": { "cooldownMs": 300000 },
-  "patterns": ["rate limit"],
-  "logging": true
-}
-```
-
-The plugin checks both `rate-limit-fallback.json` and `model-fallback.json` — old configs are found and migrated automatically.
-
-## `/fallback-status` command
+## `/fallback-status`
 
 Run `/fallback-status` in any OpenCode session to see:
 
-- Current session's fallback depth and history
-- Health state of all tracked models (healthy / cooldown / rate_limited) with time remaining
-- Which agent is active
+- current session fallback depth and history
+- tracked model health and time remaining
+- active agent name
 
-With the `verbose` flag:
+Verbose mode adds token and cost breakdown by fallback period:
 
-```
+```text
 /fallback-status verbose:true
 ```
 
-Includes token/cost breakdown per model period.
-
-When enabled, the plugin auto-creates `~/.config/opencode/commands/fallback-status.md` at startup so the slash command is available without manual setup.
-
-## Health state machine
-
-```
-healthy ──[rate limit detected]──→ rate_limited
-rate_limited ──[cooldownMs elapsed]──→ cooldown
-cooldown ──[retryOriginalAfterMs elapsed]──→ healthy
-```
-
-- **healthy** — model is usable; preferred for fallback selection
-- **rate_limited** — recently hit a limit; skipped when walking fallback chain
-- **cooldown** — cooling off; used as last resort if no healthy model is available
-- State transitions are checked every 30 seconds via a background timer (the timer is unref'ed so it does not keep the process alive)
-- When the original model recovers to healthy, a toast appears on the next `session.idle`
+When enabled, the plugin auto-creates `~/.config/opencode/commands/fallback-status.md` at startup.
 
 ## Troubleshooting
 
-**Toast doesn't appear**
-The TUI notification requires an active OpenCode TUI session. Headless/API usage won't show toasts but logs are always written.
+- **No toast appears** - toasts require an active OpenCode TUI session; headless/API runs still log events
+- **`/fallback-status` is missing** - verify `~/.config/opencode/commands/` is writable and check logs for `fallback-status.command.write.failed`
+- **"no fallback chain configured"** - add `agents["*"]` or an entry for the active agent with at least one `fallbackModels` value
+- **"all fallback models exhausted"** - every configured fallback is currently rate-limited; wait for recovery or add more models
+- **"max fallback depth reached"** - all models in the chain failed within one message; start a new session or raise `maxFallbackDepth`
 
-**`/fallback-status` command is missing**
-The plugin writes `~/.config/opencode/commands/fallback-status.md` on startup. If the command does not appear, verify the directory is writable and check for `fallback-status.command.write.failed` in OpenCode logs.
-
-**"no fallback chain configured"**
-Your `model-fallback.json` has no `agents["*"].fallbackModels` (or no entry for the active agent). Add at least a wildcard entry with one model.
-
-**"all fallback models exhausted"**
-All configured fallback models are currently rate-limited. Wait for `cooldownMs` to elapse or add more models to the chain.
-
-**"max fallback depth reached"**
-The session has hit `maxFallbackDepth` cascading fallbacks within a single message (all models failing in sequence). Depth resets automatically when the TUI reverts to the original model between messages, so this typically indicates all configured models are rate-limited simultaneously. Start a new session or increase `maxFallbackDepth` in config.
-
-**Check the logs:**
+Check logs with:
 
 ```bash
 tail -f ~/.local/share/opencode/logs/model-fallback.log | jq .
 ```
 
-Key log events: `plugin.init`, `retry.detected`, `fallback.success`, `fallback.exhausted`, `health.transition`, `recovery.available`
-
-To see the full event stream (including `event.received` and `retry.nomatch`), set `"logLevel": "debug"` in your config and restart OpenCode.
-
-For safety, free-form provider error text is redacted in plugin logs; use category/model/session fields for diagnosis.
-
-## Release automation
-
-- Uses **Conventional Commits** + `semantic-release` for automated versioning/changelog/release notes
-- CI runs lint, tests, type check, and build on every push/PR via `.github/workflows/ci.yml`
-- Trusted release gate runs on pushes to `main` via `.github/workflows/release-gate.yml`
-- Release workflow (`.github/workflows/release.yml`) runs on successful `Release Gate` completion (`workflow_run`), only for `push` events on `main`, and only when `head_sha` matches `github.sha`
-- Published as `@smart-coders-hq/opencode-model-fallback`
-- To publish to npm, set repository secret `NPM_TOKEN`
+For more event detail, set `"logLevel": "debug"` and restart OpenCode.
 
 ## Development
 
 ```bash
 bun install
-bun run lint          # lint checks
-bun test              # 163 tests across 16 files
-bunx tsc --noEmit     # type check
-bun run build         # build to dist/
+bun run lint
+bun test
+bunx tsc --noEmit
+bun run build
 ```
 
-Load locally in OpenCode:
+Local plugin config:
 
 ```jsonc
 { "plugin": ["file:///absolute/path/to/dist/index.js"] }
 ```
 
-Config for testing: place `model-fallback.json` in `.opencode/` in your project directory.
+For local testing, place `model-fallback.json` in `.opencode/` in your project directory.
