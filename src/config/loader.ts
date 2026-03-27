@@ -10,14 +10,13 @@ import { mergeWithDefaults, parseConfig } from "./schema.js";
 const CONFIG_FILENAME = "model-fallback.json";
 const OLD_CONFIG_FILENAME = "rate-limit-fallback.json";
 
-function candidatePaths(directory: string): string[] {
-  const home = homedir();
+function candidatePaths(directory: string, homeDir: string = homedir()): string[] {
   return [
     join(directory, ".opencode", CONFIG_FILENAME),
-    join(home, ".config", "opencode", CONFIG_FILENAME),
+    join(homeDir, ".config", "opencode", CONFIG_FILENAME),
     // Old format candidates (for migration)
     join(directory, ".opencode", OLD_CONFIG_FILENAME),
-    join(home, ".config", "opencode", OLD_CONFIG_FILENAME),
+    join(homeDir, ".config", "opencode", OLD_CONFIG_FILENAME),
   ];
 }
 
@@ -28,9 +27,9 @@ export interface LoadResult {
   migrated: boolean;
 }
 
-export function loadConfig(directory: string): LoadResult {
-  const agentFileConfigs = loadAgentFallbackConfigs(directory);
-  const candidates = candidatePaths(directory);
+export function loadConfig(directory: string, homeDir: string = homedir()): LoadResult {
+  const agentFileConfigs = loadAgentFallbackConfigs(directory, homeDir);
+  const candidates = candidatePaths(directory, homeDir);
 
   for (const candidate of candidates) {
     if (!existsSync(candidate)) continue;

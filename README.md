@@ -1,6 +1,16 @@
 # opencode-model-fallback
 
-OpenCode plugin that automatically switches to the next model in a configured fallback chain when the current one hits a rate limit, quota error, timeout, overload, or configured 5xx path.
+OpenCode plugin for ordered model fallback chains, preemptive redirect, and automatic rate limit recovery.
+
+When a primary model becomes rate-limited, overloaded, times out, or hits a configured 5xx path, the plugin automatically redirects or replays the message with the next healthy model in your fallback chain. It helps keep OpenCode sessions running when GPT, Claude, Gemini, and other providers temporarily stop accepting requests.
+
+## What problem does this solve?
+
+If you use OpenCode with multiple models or providers, rate limits and transient provider failures can interrupt chats and force manual model switching. This plugin adds automatic model failover so OpenCode can continue with the next healthy model instead of getting stuck on repeated retries, 429s, or provider overload errors.
+
+## How does model fallback work in OpenCode?
+
+The plugin tracks model health globally, keeps fallback depth per session, and walks an ordered fallback chain when the active model fails. If a model is already known to be unhealthy, the `chat.message` hook can preemptively redirect the next prompt before the provider returns another 429.
 
 ## Features
 

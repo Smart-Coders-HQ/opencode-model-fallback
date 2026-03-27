@@ -1,7 +1,7 @@
 {
   "name": "@smart-coders-hq/opencode-model-fallback",
   "version": "0.1.0",
-  "description": "Ordered model fallback chains with health tracking for OpenCode",
+  "description": "OpenCode plugin for ordered model fallback chains, preemptive redirect, and automatic rate limit recovery.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -50,10 +50,20 @@
   },
   "keywords": [
     "opencode",
+    "opencode-plugin",
     "plugin",
+    "llm",
+    "ai",
     "model-fallback",
+    "fallback-chain",
     "rate-limit",
-    "failover"
+    "rate-limit-recovery",
+    "failover",
+    "model-routing",
+    "provider-fallback",
+    "openai",
+    "claude",
+    "gemini"
   ],
   "license": "Apache-2.0",
   "repository": {

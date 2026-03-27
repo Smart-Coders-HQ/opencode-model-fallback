@@ -282,7 +282,7 @@ fallback:
       })
     );
 
-    const result = loadConfig(dir);
+    const result = loadConfig(dir, dir);
     // model-fallback.json wins over agent file
     expect(result.config.agents["CoderAgent"].fallbackModels).toEqual(["openai/gpt-4o"]);
   });
@@ -302,7 +302,7 @@ fallback:
 `
     );
 
-    const result = loadConfig(dir);
+    const result = loadConfig(dir, dir);
     expect(result.config.agents["CoderAgent"]).toEqual({
       fallbackModels: ["anthropic/claude-sonnet-4-20250514"],
     });
@@ -332,7 +332,7 @@ fallback:
       })
     );
 
-    const result = loadConfig(dir);
+    const result = loadConfig(dir, dir);
     expect(result.config.agents["CoderAgent"].fallbackModels).toEqual([
       "anthropic/claude-sonnet-4-20250514",
     ]);
