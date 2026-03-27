@@ -9,7 +9,7 @@ OpenCode plugin that adds ordered model fallback chains with a health state mach
 ## Commands
 
 ```bash
-bun test              # Run all unit tests (163 tests across 16 files)
+bun test              # Run all unit tests (166 tests across 16 files)
 bunx tsc --noEmit     # Type check
 bun run build         # Build to dist/
 ```
@@ -133,7 +133,7 @@ Unit tests live in `test/`. Run with `bun test`.
 
 Integration tests for the replay orchestrator and full fallback flow exist in `test/orchestrator.test.ts`, using the mock client helper in `test/helpers/mock-client.ts`. Preemptive redirect tests are in `test/preemptive.test.ts`.
 
-Plugin event-handler hardening tests are in `test/plugin.test.ts`. `/fallback-status` tool output tests are in `test/fallback-status.test.ts`.
+Plugin event-handler hardening tests are in `test/plugin.test.ts`, including fallback-active and recovery notification guard behavior. `/fallback-status` tool output tests are in `test/fallback-status.test.ts`.
 
 Additional coverage includes startup command bootstrap (`test/plugin-create.test.ts`), logger redaction/fault-tolerance (`test/logger.test.ts`), fallback usage aggregation (`test/usage.test.ts`), and health-store timer lifecycle (`test/model-health-lifecycle.test.ts`).
 

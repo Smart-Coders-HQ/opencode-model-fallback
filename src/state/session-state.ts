@@ -3,6 +3,10 @@ import type { ErrorCategory, FallbackEvent, ModelKey, SessionFallbackState } fro
 export class SessionStateStore {
   private store = new Map<string, SessionFallbackState>();
 
+  private getFallbackActiveKey(originalModel: ModelKey, currentModel: ModelKey): string {
+    return `${originalModel}->${currentModel}`;
+  }
+
   get(sessionId: string): SessionFallbackState {
     let state = this.store.get(sessionId);
     if (!state) {
@@ -86,7 +90,29 @@ export class SessionStateStore {
     if (!state.originalModel) {
       state.originalModel = model;
       state.currentModel = model;
+      state.fallbackActiveNotifiedKey = null;
     }
+  }
+
+  consumeFallbackActiveNotification(
+    sessionId: string
+  ): { originalModel: ModelKey; currentModel: ModelKey } | null {
+    const state = this.get(sessionId);
+    const { originalModel, currentModel } = state;
+
+    if (!originalModel || !currentModel || originalModel === currentModel) return null;
+
+    const key = this.getFallbackActiveKey(originalModel, currentModel);
+    if (state.fallbackActiveNotifiedKey === key) return null;
+
+    state.fallbackActiveNotifiedKey = key;
+    return { originalModel, currentModel };
+  }
+
+  clearFallbackActiveNotification(sessionId: string): void {
+    const state = this.store.get(sessionId);
+    if (!state) return;
+    state.fallbackActiveNotifiedKey = null;
   }
 
   setAgentName(sessionId: string, agentName: string): void {
@@ -105,6 +131,7 @@ export class SessionStateStore {
     state.fallbackHistory = [];
     state.lastFallbackAt = null;
     state.isProcessing = false;
+    state.fallbackActiveNotifiedKey = null;
     // Preserves: originalModel, currentModel, agentName, fallbackDepth
   }
 
@@ -128,6 +155,7 @@ export class SessionStateStore {
       lastFallbackAt: null,
       fallbackHistory: [],
       recoveryNotifiedForModel: null,
+      fallbackActiveNotifiedKey: null,
     };
   }
 }

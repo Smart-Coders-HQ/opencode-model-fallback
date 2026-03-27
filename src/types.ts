@@ -40,6 +40,7 @@ export interface SessionFallbackState {
   lastFallbackAt: number | null;
   fallbackHistory: FallbackEvent[];
   recoveryNotifiedForModel: ModelKey | null;
+  fallbackActiveNotifiedKey: string | null;
 }
 
 export interface AgentConfig {

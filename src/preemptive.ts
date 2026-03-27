@@ -35,6 +35,7 @@ export function tryPreemptiveRedirect(
     sessionState.currentModel = modelKey;
     if (wasOnFallback && modelKey === sessionState.originalModel) {
       sessionState.fallbackDepth = 0;
+      store.sessions.clearFallbackActiveNotification(sessionId);
       logger.debug("preemptive.depth.reset", { sessionId, modelKey });
     }
   }

@@ -107,12 +107,15 @@ interface ModelHealth {
 interface SessionFallbackState {
   sessionId: string;
   agentName: string | null; // resolved lazily from messages API
+  agentFile: string | null;
   originalModel: ModelKey | null;
   currentModel: ModelKey | null;
   fallbackDepth: number;
   isProcessing: boolean; // mutex for replay operations
   lastFallbackAt: number | null; // deduplication window
   fallbackHistory: FallbackEvent[]; // for /fallback-status reporting
+  recoveryNotifiedForModel: ModelKey | null;
+  fallbackActiveNotifiedKey: string | null; // dedupe repeated "Fallback Active" toasts
 }
 ```
 
@@ -127,8 +130,9 @@ chat.message hook fires (new user message)
   ├─ Check model health: is target model rate_limited?
   │   └─ No → return (message proceeds normally)
   │
-  ├─ Resolve fallback chain → pick healthy model
+  ├─ Resolve fallback chain (exact or normalized agent name) → pick healthy model
   ├─ Mutate output.message.model → redirect to fallback
+  ├─ Notify once per (original,current) fallback pair while fallback remains active
   └─ Message goes directly to fallback model (no 429 round-trip)
 ```
 
@@ -145,7 +149,7 @@ session.status event (type: "retry", message: "Rate limited...")
   ├─ Check deduplication window (3s since lastFallbackAt)
   │
   ├─ Resolve agent name (from cache or client.session.messages())
-  ├─ Look up fallback chain: config.agents[agentName] ?? config.agents["*"]
+  ├─ Look up fallback chain: exact agent match → normalized agent match → config.agents["*"]
   │
   ├─ Fetch messages → sync currentModel (detect TUI revert → reset fallbackDepth)
   ├─ Check maxFallbackDepth not exceeded (after sync so reset takes effect)
@@ -322,7 +326,7 @@ Addresses two problems: wasted 429 round-trips per message after a successful fa
 
 ## Verification Plan
 
-1. **Unit tests** (per module): config validation, pattern matching, classification, health transitions, chain resolution, message conversion, agent loader, preemptive redirect, plugin events, plugin startup bootstrap, logger redaction/fault tolerance, usage aggregation, fallback-status tool, tick recovery transitions, health timer lifecycle, path traversal security, YAML schema enforcement — **163/163 passing**
+1. **Unit tests** (per module): config validation, pattern matching, classification, health transitions, chain resolution, message conversion, agent loader, preemptive redirect, plugin events, plugin startup bootstrap, logger redaction/fault tolerance, usage aggregation, fallback-status tool, tick recovery transitions, health timer lifecycle, path traversal security, YAML schema enforcement — **166/166 passing**
 2. **Integration tests** (mock client): full fallback flow, cascading, max depth, concurrent events, session deletion — **complete**
 3. **Manual E2E test**: Install as local plugin, configure fallback chains, trigger rate limit, verify:
    - Detection logged correctly

@@ -112,6 +112,21 @@ describe("resolveFallbackModels", () => {
     expect(result).toEqual(["a/1", "a/2"]);
   });
 
+  it("matches normalized agent names like Build -> BuildAgent", () => {
+    const result = resolveFallbackModels(
+      {
+        ...config,
+        agents: {
+          BuildAgent: { fallbackModels: ["c/1", "c/2"] },
+          "*": { fallbackModels: ["b/1"] },
+        },
+      },
+      "Build"
+    );
+
+    expect(result).toEqual(["c/1", "c/2"]);
+  });
+
   it("falls back to wildcard when agent not configured", () => {
     const result = resolveFallbackModels(config, "coder");
     expect(result).toEqual(["b/1"]);
@@ -203,5 +218,33 @@ describe("SessionStateStore", () => {
 
     const state = store.get("s9");
     expect(state.fallbackDepth).toBe(1);
+  });
+
+  it("consumes fallback-active notification only once per fallback pair", () => {
+    const store = new SessionStateStore();
+    store.setOriginalModel("s10", "a/orig");
+    store.recordPreemptiveRedirect("s10", "a/orig", "a/fallback", "coder");
+
+    expect(store.consumeFallbackActiveNotification("s10")).toEqual({
+      originalModel: "a/orig",
+      currentModel: "a/fallback",
+    });
+    expect(store.consumeFallbackActiveNotification("s10")).toBeNull();
+  });
+
+  it("clears fallback-active notification after returning to original model", () => {
+    const store = new SessionStateStore();
+    store.setOriginalModel("s11", "a/orig");
+    store.recordPreemptiveRedirect("s11", "a/orig", "a/fallback", "coder");
+
+    expect(store.consumeFallbackActiveNotification("s11")).not.toBeNull();
+    store.clearFallbackActiveNotification("s11");
+    store.get("s11").currentModel = "a/orig";
+    store.recordPreemptiveRedirect("s11", "a/orig", "a/fallback", "coder");
+
+    expect(store.consumeFallbackActiveNotification("s11")).toEqual({
+      originalModel: "a/orig",
+      currentModel: "a/fallback",
+    });
   });
 });

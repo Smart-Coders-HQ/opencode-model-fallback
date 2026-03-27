@@ -109,11 +109,13 @@ export const createPlugin: Plugin = async ({ client, directory }) => {
         });
       }
 
-      // Remind user on each turn while running on a fallback model
-      const current = sessionState.currentModel;
-      const original = sessionState.originalModel;
-      if (current && original && current !== original) {
-        notifyFallbackActive(client, original, current).catch(() => {});
+      const activeFallback = store.sessions.consumeFallbackActiveNotification(input.sessionID);
+      if (activeFallback) {
+        notifyFallbackActive(
+          client,
+          activeFallback.originalModel,
+          activeFallback.currentModel
+        ).catch(() => {});
       }
     },
 
@@ -287,6 +289,7 @@ export async function handleIdle(
   if (!state.originalModel) return;
   if (state.currentModel === state.originalModel) {
     state.recoveryNotifiedForModel = null;
+    state.fallbackActiveNotifiedKey = null;
     return;
   }
 

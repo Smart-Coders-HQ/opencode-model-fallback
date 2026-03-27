@@ -15,6 +15,7 @@ function baseState(): SessionFallbackState {
     lastFallbackAt: null,
     fallbackHistory: [],
     recoveryNotifiedForModel: null,
+    fallbackActiveNotifiedKey: null,
   };
 }
 
