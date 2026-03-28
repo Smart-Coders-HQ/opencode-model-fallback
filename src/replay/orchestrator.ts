@@ -187,6 +187,9 @@ export async function attemptFallback(
     }
 
     // Step 2: Revert to before the failed message
+    // Note: We ignore revert failures because the OpenCode SDK may return
+    // non-JSON responses (empty string or 204 No Content), causing SyntaxError.
+    // The priority is making the fallback request, not cleaning UI history.
     try {
       await client.session.revert({
         path: { id: sessionId },
@@ -197,8 +200,7 @@ export async function attemptFallback(
         messageID: lastUserEntry.id,
       });
     } catch (err) {
-      logger.error("replay.revert.failed", { sessionId, err });
-      return { success: false, error: "revert failed" };
+      logger.warn("replay.revert.failed", { sessionId, err });
     }
 
     // Step 3: Re-prompt with fallback model

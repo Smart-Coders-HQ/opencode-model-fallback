@@ -547,7 +547,7 @@ describe("attemptFallback — replay step failures", () => {
     expect(store.sessions.get("s1").isProcessing).toBe(false);
   });
 
-  it("returns failure when revert fails", async () => {
+  it("continues when revert fails (ignores revert errors)", async () => {
     const { client } = makeMockClient({
       messages: [makeUserMessage("s1", "m1", "openai", "gpt-5.3-codex", "coder")],
       revertError: new Error("message not found"),
@@ -566,8 +566,8 @@ describe("attemptFallback — replay step failures", () => {
       "/tmp"
     );
 
-    expect(result.success).toBe(false);
-    expect(result.error).toBe("revert failed");
+    expect(result.success).toBe(true);
+    expect(result.fallbackModel).toBe("anthropic/claude-sonnet-4");
     expect(store.sessions.get("s1").isProcessing).toBe(false);
   });
 

@@ -15,6 +15,14 @@ export const DEFAULT_PATTERNS = [
   "billing limit",
   "resource exhausted",
   "429",
+  "bad gateway",
+  "502",
+  "503",
+  "504",
+  "internal server error",
+  "service unavailable",
+  "gateway timeout",
+  "500",
 ];
 
 export const DEFAULT_LOG_PATH = join(homedir(), ".local/share/opencode/logs/model-fallback.log");
