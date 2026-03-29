@@ -38,6 +38,17 @@ describe("classifyError", () => {
     expect(classifyError("Service Unavailable", 503)).toBe("5xx");
   });
 
+  it("classifies 'Bad Gateway' message without status code as 5xx", () => {
+    expect(classifyError("Bad Gateway")).toBe("5xx");
+    expect(classifyError("bad gateway")).toBe("5xx");
+    expect(classifyError("BAD GATEWAY")).toBe("5xx");
+  });
+
+  it("classifies 'operation was aborted' as timeout", () => {
+    expect(classifyError("operation was aborted")).toBe("timeout");
+    expect(classifyError("Error: operation was aborted by user")).toBe("timeout");
+  });
+
   it("returns unknown for unrecognized errors", () => {
     expect(classifyError("Something went completely wrong")).toBe("unknown");
   });

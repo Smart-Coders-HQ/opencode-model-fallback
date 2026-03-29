@@ -201,7 +201,6 @@ async function handleRetry(
   logger: Logger,
   directory: string
 ): Promise<void> {
-  // Check if the retry message matches any fallback-triggering pattern
   if (!matchesAnyPattern(message, config.patterns)) {
     logger.debug("retry.nomatch", { sessionId, messageLength: message.length });
     return;

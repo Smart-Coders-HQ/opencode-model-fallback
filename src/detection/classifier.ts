@@ -42,7 +42,23 @@ const SERVER_ERROR_PATTERNS = [
   "504",
 ];
 
-export function classifyError(message: string, statusCode?: number): ErrorCategory {
+export function classifyError(error: unknown, statusCode?: number): ErrorCategory {
+  const message =
+    typeof error === "string"
+      ? error
+      : (error as { message?: string })?.message || JSON.stringify(error);
+  const raw = String(message || "")
+    .toLowerCase()
+    .trim();
+
+  if (raw.includes("bad gateway") || raw.includes("502")) {
+    return "5xx";
+  }
+
+  if (raw.includes("operation was aborted")) {
+    return "timeout";
+  }
+
   const text = message.toLowerCase();
 
   if (statusCode === 429 || matchesAnyPattern(text, RATE_LIMIT_PATTERNS)) {

@@ -16,18 +16,36 @@ export class SessionStateStore {
     return state;
   }
 
-  acquireLock(sessionId: string): boolean {
+  acquireLock(
+    sessionId: string,
+    logger?: { debug: (msg: string, data?: Record<string, unknown>) => void }
+  ): boolean {
     // This lock relies on Node's single-threaded event loop semantics.
     // If this store is ever shared across worker threads, replace with a real mutex.
     const state = this.get(sessionId);
+
+    // Emergency TTL: if lock is older than 60 seconds, force-clear it
+    if (state.isProcessing && state.lockedAt !== null) {
+      const ageMs = Date.now() - state.lockedAt;
+      if (ageMs > 60_000) {
+        logger?.debug("lock.ttl.expired", { sessionId, ageMs });
+        state.isProcessing = false;
+        state.lockedAt = null;
+      }
+    }
+
     if (state.isProcessing) return false;
     state.isProcessing = true;
+    state.lockedAt = Date.now();
     return true;
   }
 
   releaseLock(sessionId: string): void {
     const state = this.store.get(sessionId);
-    if (state) state.isProcessing = false;
+    if (state) {
+      state.isProcessing = false;
+      state.lockedAt = null;
+    }
   }
 
   isInDedupWindow(sessionId: string, windowMs = 3_000): boolean {
@@ -131,6 +149,7 @@ export class SessionStateStore {
     state.fallbackHistory = [];
     state.lastFallbackAt = null;
     state.isProcessing = false;
+    state.lockedAt = null;
     state.fallbackActiveNotifiedKey = null;
     // Preserves: originalModel, currentModel, agentName, fallbackDepth
   }
@@ -152,6 +171,7 @@ export class SessionStateStore {
       currentModel: null,
       fallbackDepth: 0,
       isProcessing: false,
+      lockedAt: null,
       lastFallbackAt: null,
       fallbackHistory: [],
       recoveryNotifiedForModel: null,

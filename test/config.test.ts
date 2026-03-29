@@ -27,6 +27,21 @@ describe("parseConfig", () => {
     expect(warnings.length).toBeGreaterThan(0);
   });
 
+  it("accepts model keys with nested slashes (proxy providers)", () => {
+    const raw = {
+      agents: {
+        "*": { fallbackModels: ["blazeapi/openai/gpt5.4"] },
+        architect: { fallbackModels: ["blazeapi/deepseek-ai/deepseek-v3.2"] },
+      },
+    };
+    const { config, warnings } = parseConfig(raw);
+    expect(warnings).toHaveLength(0);
+    expect(config.agents?.["*"]?.fallbackModels).toEqual(["blazeapi/openai/gpt5.4"]);
+    expect(config.agents?.["architect"]?.fallbackModels).toEqual([
+      "blazeapi/deepseek-ai/deepseek-v3.2",
+    ]);
+  });
+
   it("rejects cooldownMs below minimum", () => {
     const raw = {
       defaults: { cooldownMs: 100 },
