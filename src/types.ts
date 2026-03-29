@@ -37,6 +37,7 @@ export interface SessionFallbackState {
   currentModel: ModelKey | null;
   fallbackDepth: number;
   isProcessing: boolean;
+  lockedAt: number | null;
   lastFallbackAt: number | null;
   fallbackHistory: FallbackEvent[];
   recoveryNotifiedForModel: ModelKey | null;

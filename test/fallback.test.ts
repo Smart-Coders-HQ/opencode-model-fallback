@@ -148,6 +148,39 @@ describe("SessionStateStore", () => {
     store.releaseLock("s1");
   });
 
+  it("expires lock after 60s TTL", () => {
+    const store = new SessionStateStore();
+
+    // Simulate a stuck lock that was acquired 61 seconds ago
+    store.acquireLock("s1");
+    const state = store.get("s1");
+    state.lockedAt = Date.now() - 61_000; // 61 seconds ago
+
+    // acquireLock should detect TTL expiration and allow re-acquisition
+    expect(store.acquireLock("s1")).toBe(true);
+
+    // Verify lock was actually acquired (fresh timestamp)
+    const freshState = store.get("s1");
+    expect(freshState.isProcessing).toBe(true);
+    expect(freshState.lockedAt).toBeGreaterThan(Date.now() - 1000);
+
+    store.releaseLock("s1");
+  });
+
+  it("does not expire lock within TTL window", () => {
+    const store = new SessionStateStore();
+
+    // Simulate a lock acquired 59 seconds ago
+    store.acquireLock("s1");
+    const state = store.get("s1");
+    state.lockedAt = Date.now() - 59_000; // 59 seconds ago
+
+    // acquireLock should still reject because TTL not expired
+    expect(store.acquireLock("s1")).toBe(false);
+
+    store.releaseLock("s1");
+  });
+
   it("dedup window blocks within 3s", () => {
     const store = new SessionStateStore();
     const state = store.get("s2");

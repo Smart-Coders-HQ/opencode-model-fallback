@@ -12,6 +12,7 @@ function baseState(): SessionFallbackState {
     currentModel: "openai/gpt-5.3-codex",
     fallbackDepth: 0,
     isProcessing: false,
+    lockedAt: null,
     lastFallbackAt: null,
     fallbackHistory: [],
     recoveryNotifiedForModel: null,
