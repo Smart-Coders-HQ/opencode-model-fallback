@@ -10,6 +10,7 @@ export interface MockMessageEntry {
 
 export interface MockClientCalls {
   abort: string[];
+  get: string[];
   revert: Array<{ sessionId: string; messageID: string }>;
   prompt: Array<{
     sessionId: string;
@@ -24,10 +25,12 @@ export interface MockClientCalls {
 
 export interface MockClientOptions {
   messages?: MockMessageEntry[];
+  session?: unknown;
   abortError?: Error;
   revertError?: Error;
   promptError?: Error;
   messagesError?: Error;
+  sessionGetError?: Error;
 }
 
 export function makeMockClient(opts: MockClientOptions = {}): {
@@ -36,24 +39,39 @@ export function makeMockClient(opts: MockClientOptions = {}): {
 } {
   const calls: MockClientCalls = {
     abort: [],
+    get: [],
     revert: [],
     prompt: [],
     toasts: [],
     logs: [],
   };
 
-  const messages = opts.messages ?? [makeUserMessage("s1", "m1", "openai", "gpt-5.3-codex")];
+  const messages = opts.messages ?? [
+    makeUserMessage("s1", "m1", "openai", "gpt-5.3-codex"),
+  ];
+  const session = opts.session ?? {};
 
   const client = {
     session: {
+      get: async (options: { path: { id: string } }) => {
+        if (opts.sessionGetError) throw opts.sessionGetError;
+        calls.get.push(options.path.id);
+        return { data: session };
+      },
       abort: async (options: { path: { id: string } }) => {
         if (opts.abortError) throw opts.abortError;
         calls.abort.push(options.path.id);
         return { data: {} };
       },
-      revert: async (options: { path: { id: string }; body?: { messageID: string } }) => {
+      revert: async (options: {
+        path: { id: string };
+        body?: { messageID: string };
+      }) => {
         if (opts.revertError) throw opts.revertError;
-        calls.revert.push({ sessionId: options.path.id, messageID: options.body?.messageID ?? "" });
+        calls.revert.push({
+          sessionId: options.path.id,
+          messageID: options.body?.messageID ?? "",
+        });
         return { data: {} };
       },
       prompt: async (options: {
@@ -104,7 +122,7 @@ export function makeUserMessage(
   providerID: string,
   modelID: string,
   agent = "coder",
-  textContent = "hello"
+  textContent = "hello",
 ): MockMessageEntry {
   const info: UserMessage = {
     id: messageId,

@@ -1,8 +1,14 @@
 import type { PluginInput } from "@opencode-ai/plugin";
 import type { Part } from "@opencode-ai/sdk";
-import { resolveAgentFile, toRelativeAgentPath } from "../config/agent-loader.js";
+import {
+  resolveAgentFile,
+  toRelativeAgentPath,
+} from "../config/agent-loader.js";
 import type { Logger } from "../logging/logger.js";
-import { resolveAgentName, resolveFallbackModels } from "../resolution/agent-resolver.js";
+import {
+  resolveAgentName,
+  resolveFallbackModels,
+} from "../resolution/agent-resolver.js";
 import { resolveFallbackModel } from "../resolution/fallback-resolver.js";
 import type { FallbackStore } from "../state/store.js";
 import type { ErrorCategory, ModelKey, PluginConfig } from "../types.js";
@@ -17,6 +23,10 @@ export interface ReplayResult {
   error?: string;
 }
 
+interface SessionRevertInfo {
+  messageID?: string;
+}
+
 export async function attemptFallback(
   sessionId: string,
   reason: ErrorCategory,
@@ -24,7 +34,7 @@ export async function attemptFallback(
   store: FallbackStore,
   config: PluginConfig,
   logger: Logger,
-  directory: string
+  directory: string,
 ): Promise<ReplayResult> {
   const sessionState = store.sessions.get(sessionId);
 
@@ -42,17 +52,24 @@ export async function attemptFallback(
     }
 
     // Resolve agent name (lazily)
-    const agentName = await resolveAgentName(client, sessionId, sessionState.agentName);
+    const agentName = await resolveAgentName(
+      client,
+      sessionId,
+      sessionState.agentName,
+    );
     if (agentName) {
       store.sessions.setAgentName(sessionId, agentName);
       if (!sessionState.agentFile) {
         const absPath = resolveAgentFile(
           agentName,
           directory,
-          config.agentDirs?.length ? config.agentDirs : undefined
+          config.agentDirs?.length ? config.agentDirs : undefined,
         );
         if (absPath)
-          store.sessions.setAgentFile(sessionId, toRelativeAgentPath(absPath, directory));
+          store.sessions.setAgentFile(
+            sessionId,
+            toRelativeAgentPath(absPath, directory),
+          );
       }
     }
 
@@ -98,7 +115,11 @@ export async function attemptFallback(
 
       const rawParts = (entry as { parts?: unknown }).parts;
       const safeParts = sanitizeParts(rawParts);
-      if (safeParts.length === 0 && Array.isArray(rawParts) && rawParts.length > 0) {
+      if (
+        safeParts.length === 0 &&
+        Array.isArray(rawParts) &&
+        rawParts.length > 0
+      ) {
         continue;
       }
 
@@ -154,7 +175,11 @@ export async function attemptFallback(
     }
 
     // Pick next healthy model (uses synced currentModel)
-    const fallbackModel = resolveFallbackModel(chain, sessionState.currentModel, store.health);
+    const fallbackModel = resolveFallbackModel(
+      chain,
+      sessionState.currentModel,
+      store.health,
+    );
     if (!fallbackModel) {
       logger.warn("fallback.all-exhausted", { sessionId, chain });
       return { success: false, error: "all fallback models exhausted" };
@@ -166,7 +191,7 @@ export async function attemptFallback(
       store.health.markRateLimited(
         currentModel,
         config.defaults.cooldownMs,
-        config.defaults.retryOriginalAfterMs
+        config.defaults.retryOriginalAfterMs,
       );
     }
 
@@ -197,8 +222,22 @@ export async function attemptFallback(
         messageID: lastUserEntry.id,
       });
     } catch (err) {
-      logger.error("replay.revert.failed", { sessionId, err });
-      return { success: false, error: "revert failed" };
+      const revertApplied = await wasRevertApplied(
+        client,
+        sessionId,
+        lastUserEntry.id,
+        logger,
+      );
+      if (!revertApplied) {
+        logger.error("replay.revert.failed", { sessionId, err });
+        return { success: false, error: "revert failed" };
+      }
+
+      logger.warn("replay.revert.recovered", {
+        sessionId,
+        messageID: lastUserEntry.id,
+        errorType: err instanceof Error ? err.name : typeof err,
+      });
     }
 
     // Step 3: Re-prompt with fallback model
@@ -240,7 +279,7 @@ export async function attemptFallback(
       currentModel ?? fallbackModel,
       fallbackModel,
       reason,
-      agentName
+      agentName,
     );
 
     logger.info("fallback.success", {
@@ -267,6 +306,39 @@ function sanitizeParts(parts: unknown): Part[] {
   if (!Array.isArray(parts)) return [];
 
   return parts.filter(
-    (part): part is Part => typeof part === "object" && part !== null && "type" in part
+    (part): part is Part =>
+      typeof part === "object" && part !== null && "type" in part,
   );
+}
+
+async function wasRevertApplied(
+  client: Client,
+  sessionId: string,
+  expectedMessageId: string,
+  logger: Logger,
+): Promise<boolean> {
+  try {
+    const result = await client.session.get({ path: { id: sessionId } });
+    const revertInfo = getSessionRevertInfo(result.data);
+    return revertInfo?.messageID === expectedMessageId;
+  } catch (err) {
+    logger.warn("replay.revert.verify.failed", {
+      sessionId,
+      messageID: expectedMessageId,
+      errorType: err instanceof Error ? err.name : typeof err,
+    });
+    return false;
+  }
+}
+
+function getSessionRevertInfo(session: unknown): SessionRevertInfo | null {
+  if (!session || typeof session !== "object") return null;
+
+  const revert = (session as { revert?: unknown }).revert;
+  if (!revert || typeof revert !== "object") return null;
+
+  const messageID = (revert as { messageID?: unknown }).messageID;
+  if (typeof messageID !== "string") return null;
+
+  return { messageID };
 }

@@ -58,7 +58,7 @@ opencode-model-fallback/
 │   │   ├── fallback-resolver.ts  # Walk fallback chain, select next healthy model
 │   │   └── agent-resolver.ts     # Map session → agent → fallback config
 │   ├── replay/
-│   │   ├── orchestrator.ts       # abort → revert → prompt sequence (the fragile part)
+│   │   ├── orchestrator.ts       # abort → revert → prompt sequence with revert postcondition checks
 │   │   └── message-converter.ts  # Convert stored message parts → prompt input format
 │   ├── display/
 │   │   ├── notifier.ts           # Inline notifications via client.tui.showToast()
@@ -157,6 +157,7 @@ session.status event (type: "retry", message: "Rate limited...")
   │
   ├─ Step 1: client.session.abort() — stop retry loop
   ├─ Step 2: client.session.revert({ messageID }) — undo failed attempt
+  │   └─ If revert throws, verify session.revert.messageID before treating it as a hard failure
   ├─ Step 3: client.session.prompt({ model: fallbackModel, parts }) — replay
   │
   ├─ Update state: mark original model rate_limited, increment fallbackDepth
@@ -257,19 +258,19 @@ cooldown ──[retryOriginalAfterMs elapsed]──→ healthy
 
 ## Known Risks & Mitigations
 
-| Risk                                  | Severity | Mitigation                                                                             |
-| ------------------------------------- | -------- | -------------------------------------------------------------------------------------- |
-| abort→revert→prompt race window       | High     | Per-session mutex, dedup window, guard checks between each step                        |
-| Agent name not on Session type        | Medium   | Fetch from messages API, cache in session state                                        |
-| Fallback model also rate-limited      | Medium   | Event loop naturally re-triggers detection; maxFallbackDepth prevents infinite cascade |
-| Session deleted during replay         | Low      | Check session exists before each step; graceful abort                                  |
-| Config malformed                      | Low      | Zod partial validation; use defaults for invalid fields, log warnings                  |
-| Log path traversal                    | Low      | Validate within $HOME                                                                  |
-| Stale events after abort              | Medium   | 3-second deduplication window after lastFallbackAt                                     |
-| Compaction disrupts message history   | Medium   | Tracked: omf-owh.3                                                                     |
-| Manual model switch makes state stale | Low      | Tracked: omf-owh.4                                                                     |
+| Risk                                  | Severity | Mitigation                                                                                         |
+| ------------------------------------- | -------- | -------------------------------------------------------------------------------------------------- |
+| abort→revert→prompt race window       | High     | Per-session mutex, dedup window, guard checks between each step, revert postcondition verification |
+| Agent name not on Session type        | Medium   | Fetch from messages API, cache in session state                                                    |
+| Fallback model also rate-limited      | Medium   | Event loop naturally re-triggers detection; maxFallbackDepth prevents infinite cascade             |
+| Session deleted during replay         | Low      | Check session exists before each step; graceful abort                                              |
+| Config malformed                      | Low      | Zod partial validation; use defaults for invalid fields, log warnings                              |
+| Log path traversal                    | Low      | Validate within $HOME                                                                              |
+| Stale events after abort              | Medium   | 3-second deduplication window after lastFallbackAt                                                 |
+| Compaction disrupts message history   | Medium   | Tracked: omf-owh.3                                                                                 |
+| Manual model switch makes state stale | Low      | Tracked: omf-owh.4                                                                                 |
 
-**Fundamental fragility**: The abort-revert-prompt sequence has no transactional guarantee. If revert succeeds but prompt fails, the session is left in a reverted state. The user can manually retry. All failures are logged with enough context for manual recovery.
+**Fundamental fragility**: The abort-revert-prompt sequence has no transactional guarantee. If revert succeeds but prompt fails, the session is left in a reverted state. If revert throws after the server already applied the revert, the plugin now verifies the persisted revert state before deciding whether replay can continue. The user can manually retry. All failures are logged with enough context for manual recovery.
 
 ---
 
@@ -322,11 +323,16 @@ Addresses two problems: wasted 429 round-trips per message after a successful fa
 - **Preemptive redirect** — `src/preemptive.ts` with `tryPreemptiveRedirect()` for testable sync logic; `chat.message` hook in `src/plugin.ts` mutates `output.message.model` to redirect rate-limited models before they hit the provider
 - **Tests** — 3 new orchestrator depth-reset tests, full `test/preemptive.test.ts` suite (redirect, depth reset, session sync, no circular triggering)
 
+### Phase 7: Revert Postcondition Recovery ✓
+
+- **Reactive replay hardening** — `src/replay/orchestrator.ts` verifies `client.session.get().data.revert.messageID` when `client.session.revert()` throws, allowing replay to continue when the server-side revert succeeded but the client failed to parse the response
+- **Tests** — `test/orchestrator.test.ts` covers the recovered revert path; `test/helpers/mock-client.ts` now supports `session.get()` verification in replay failure scenarios
+
 ---
 
 ## Verification Plan
 
-1. **Unit tests** (per module): config validation, pattern matching, classification, health transitions, chain resolution, message conversion, agent loader, preemptive redirect, plugin events, plugin startup bootstrap, logger redaction/fault tolerance, usage aggregation, fallback-status tool, tick recovery transitions, health timer lifecycle, path traversal security, YAML schema enforcement — **166/166 passing**
+1. **Unit tests** (per module): config validation, pattern matching, classification, health transitions, chain resolution, message conversion, agent loader, preemptive redirect, plugin events, plugin startup bootstrap, logger redaction/fault tolerance, usage aggregation, fallback-status tool, tick recovery transitions, health timer lifecycle, path traversal security, YAML schema enforcement — **168/168 passing**
 2. **Integration tests** (mock client): full fallback flow, cascading, max depth, concurrent events, session deletion — **complete**
 3. **Manual E2E test**: Install as local plugin, configure fallback chains, trigger rate limit, verify:
    - Detection logged correctly
@@ -341,7 +347,7 @@ Addresses two problems: wasted 429 round-trips per message after a successful fa
 ## API Surface Used
 
 - `@opencode-ai/plugin` — Plugin type, `tool()` helper, Zod via `tool.schema`
-- `client.session.abort/revert/prompt/messages` — Core replay mechanism
+- `client.session.abort/get/revert/prompt/messages` — Core replay mechanism
 - `client.tui.showToast()` — User-facing notifications
 - `client.app.log()` — Structured logging to OpenCode's log system
 - OpenCode's native token/cost tracking via `AssistantMessage.tokens` / `.cost`

@@ -136,6 +136,7 @@ When enabled, the plugin auto-creates `~/.config/opencode/commands/fallback-stat
 - **"no fallback chain configured"** - add `agents["*"]` or an entry for the active agent with at least one `fallbackModels` value
 - **"all fallback models exhausted"** - every configured fallback is currently rate-limited; wait for recovery or add more models
 - **"max fallback depth reached"** - all models in the chain failed within one message; start a new session or raise `maxFallbackDepth`
+- **Reactive fallback logged `replay.revert.failed`** - if OpenCode applied the revert but returned an invalid revert response, newer plugin builds verify session revert state and continue replay instead of aborting immediately
 
 Check logs with:
 

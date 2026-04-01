@@ -9,7 +9,7 @@ OpenCode plugin that adds ordered model fallback chains with a health state mach
 ## Commands
 
 ```bash
-bun test              # Run all unit tests (166 tests across 16 files)
+bun test              # Run all unit tests (168 tests across 16 files)
 bunx tsc --noEmit     # Type check
 bun run build         # Build to dist/
 ```
@@ -52,7 +52,7 @@ Key invariants:
 - **Model health is global** — rate limits are account-wide, shared across all sessions
 - **Session state is per-session** — independent fallback depth and history per agent
 - **No mid-conversation auto-switch** — once fallen back, stays on fallback model until session ends
-- **Replay is fragile** — abort→revert→prompt has no transactional guarantee; failures are logged
+- **Replay is fragile** — abort→revert→prompt has no transactional guarantee; revert errors may require postcondition verification and failures are logged
 - **Preemptive redirect** — `chat.message` hook redirects messages away from rate-limited models before they hit the provider, avoiding 429 round-trips
 - **Depth resets on TUI revert** — when the TUI reverts to the original model between messages, `fallbackDepth` resets to 0 so `maxFallbackDepth` only guards true cascading within a single message
 
