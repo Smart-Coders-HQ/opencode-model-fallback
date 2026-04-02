@@ -29,7 +29,7 @@ export async function attemptFallback(
   const sessionState = store.sessions.get(sessionId);
 
   // Acquire per-session processing lock
-  if (!store.sessions.acquireLock(sessionId, logger)) {
+  if (!store.sessions.acquireLock(sessionId)) {
     logger.debug("fallback.skipped.locked", { sessionId });
     return { success: false, error: "already processing" };
   }

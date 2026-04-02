@@ -16,10 +16,7 @@ export class SessionStateStore {
     return state;
   }
 
-  acquireLock(
-    sessionId: string,
-    logger?: { debug: (msg: string, data?: Record<string, unknown>) => void }
-  ): boolean {
+  acquireLock(sessionId: string): boolean {
     // This lock relies on Node's single-threaded event loop semantics.
     // If this store is ever shared across worker threads, replace with a real mutex.
     const state = this.get(sessionId);
@@ -28,7 +25,6 @@ export class SessionStateStore {
     if (state.isProcessing && state.lockedAt !== null) {
       const ageMs = Date.now() - state.lockedAt;
       if (ageMs > 60_000) {
-        logger?.debug("lock.ttl.expired", { sessionId, ageMs });
         state.isProcessing = false;
         state.lockedAt = null;
       }
