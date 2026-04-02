@@ -3,7 +3,7 @@ import { isAbsolute, relative, resolve } from "path";
 import { z } from "zod";
 import { DEFAULT_CONFIG } from "./defaults.js";
 
-const MODEL_KEY_RE = /^[a-zA-Z0-9_-]{1,100}\/[a-zA-Z0-9._/-]{1,200}$/;
+const MODEL_KEY_RE = /^[a-zA-Z0-9_-]{1,100}(\/[a-zA-Z0-9._-]{1,100})+$/;
 const home = resolve(homedir());
 
 function formatPath(path: Array<PropertyKey>): string {

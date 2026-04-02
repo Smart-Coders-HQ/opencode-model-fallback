@@ -4,7 +4,7 @@ import { homedir } from "os";
 import { basename, extname, isAbsolute, join, relative, resolve } from "path";
 import type { AgentConfig } from "../types.js";
 
-const MODEL_KEY_RE = /^[a-zA-Z0-9_-]{1,100}\/[a-zA-Z0-9._-]{1,100}$/;
+const MODEL_KEY_RE = /^[a-zA-Z0-9_-]{1,100}(\/[a-zA-Z0-9._-]{1,100})+$/;
 
 function isPathInside(baseDir: string, targetPath: string): boolean {
   const rel = relative(baseDir, targetPath);
