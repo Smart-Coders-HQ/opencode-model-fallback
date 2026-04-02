@@ -7,6 +7,7 @@ import { resolveFallbackModel } from "../resolution/fallback-resolver.js";
 import type { FallbackStore } from "../state/store.js";
 import type { ErrorCategory, ModelKey, PluginConfig } from "../types.js";
 import { convertPartsForPrompt } from "./message-converter.js";
+import { captureSubagentContext, snapshotsToPromptParts } from "./subagent-context.js";
 
 type Client = PluginInput["client"];
 
@@ -190,6 +191,14 @@ export async function attemptFallback(
       return { success: false, error: "abort failed" };
     }
 
+    // Step 1.5: Capture subagent context before revert destroys it
+    const subagentSnapshots = captureSubagentContext(
+      messageEntries,
+      lastUserEntry.id,
+      agentName,
+      logger,
+    );
+
     // Step 2: Revert to before the failed message
     try {
       await client.session.revert({
@@ -221,6 +230,17 @@ export async function attemptFallback(
 
     // Step 3: Re-prompt with fallback model
     const promptParts = convertPartsForPrompt(lastUserEntry.parts);
+
+    // Inject preserved subagent context if available
+    if (subagentSnapshots.length > 0) {
+      const contextParts = snapshotsToPromptParts(subagentSnapshots);
+      promptParts.unshift(...contextParts);
+      logger.info("subagent.context.injected", {
+        sessionId,
+        snapshotCount: subagentSnapshots.length,
+      });
+    }
+
     if (promptParts.length === 0) {
       promptParts.push({ type: "text", text: "" });
     }
