@@ -547,10 +547,11 @@ describe("attemptFallback — replay step failures", () => {
     expect(store.sessions.get("s1").isProcessing).toBe(false);
   });
 
-  it("continues when revert fails (ignores revert errors)", async () => {
+  it("recovers when revert throws but was actually applied", async () => {
     const { client } = makeMockClient({
       messages: [makeUserMessage("s1", "m1", "openai", "gpt-5.3-codex", "coder")],
       revertError: new Error("message not found"),
+      sessionRevertMessageID: "m1",
     });
     const store = makeStore();
     store.sessions.setOriginalModel("s1", "openai/gpt-5.3-codex");

@@ -17,6 +17,10 @@ export interface ReplayResult {
   error?: string;
 }
 
+interface SessionRevertInfo {
+  messageID?: string;
+}
+
 export async function attemptFallback(
   sessionId: string,
   reason: ErrorCategory,
@@ -187,9 +191,6 @@ export async function attemptFallback(
     }
 
     // Step 2: Revert to before the failed message
-    // Note: We ignore revert failures because the OpenCode SDK may return
-    // non-JSON responses (empty string or 204 No Content), causing SyntaxError.
-    // The priority is making the fallback request, not cleaning UI history.
     try {
       await client.session.revert({
         path: { id: sessionId },
@@ -200,7 +201,22 @@ export async function attemptFallback(
         messageID: lastUserEntry.id,
       });
     } catch (err) {
-      logger.warn("replay.revert.failed", { sessionId, err });
+      const revertApplied = await wasRevertApplied(
+        client,
+        sessionId,
+        lastUserEntry.id,
+        logger,
+      );
+      if (!revertApplied) {
+        logger.error("replay.revert.failed", { sessionId, err });
+        return { success: false, error: "revert failed" };
+      }
+
+      logger.warn("replay.revert.recovered", {
+        sessionId,
+        messageID: lastUserEntry.id,
+        errorType: err instanceof Error ? err.name : typeof err,
+      });
     }
 
     // Step 3: Re-prompt with fallback model
@@ -257,7 +273,6 @@ export async function attemptFallback(
 
     return { success: true, fallbackModel, fromModel: currentModel };
   } finally {
-    logger.debug("replay.lock.released", { sessionId });
     store.sessions.releaseLock(sessionId);
   }
 }
@@ -272,4 +287,36 @@ function sanitizeParts(parts: unknown): Part[] {
   return parts.filter(
     (part): part is Part => typeof part === "object" && part !== null && "type" in part
   );
+}
+
+async function wasRevertApplied(
+  client: Client,
+  sessionId: string,
+  expectedMessageId: string,
+  logger: Logger,
+): Promise<boolean> {
+  try {
+    const result = await client.session.get({ path: { id: sessionId } });
+    const revertInfo = getSessionRevertInfo(result.data);
+    return revertInfo?.messageID === expectedMessageId;
+  } catch (err) {
+    logger.warn("replay.revert.verify.failed", {
+      sessionId,
+      messageID: expectedMessageId,
+      errorType: err instanceof Error ? err.name : typeof err,
+    });
+    return false;
+  }
+}
+
+function getSessionRevertInfo(session: unknown): SessionRevertInfo | null {
+  if (!session || typeof session !== "object") return null;
+
+  const revert = (session as { revert?: unknown }).revert;
+  if (!revert || typeof revert !== "object") return null;
+
+  const messageID = (revert as { messageID?: unknown }).messageID;
+  if (typeof messageID !== "string") return null;
+
+  return { messageID };
 }

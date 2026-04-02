@@ -28,6 +28,7 @@ export interface MockClientOptions {
   revertError?: Error;
   promptError?: Error;
   messagesError?: Error;
+  sessionRevertMessageID?: string | null;
 }
 
 export function makeMockClient(opts: MockClientOptions = {}): {
@@ -77,6 +78,12 @@ export function makeMockClient(opts: MockClientOptions = {}): {
       messages: async (_options: { path: { id: string } }) => {
         if (opts.messagesError) throw opts.messagesError;
         return { data: messages };
+      },
+      get: async (_options: { path: { id: string } }) => {
+        if (opts.sessionRevertMessageID !== undefined) {
+          return { data: { revert: opts.sessionRevertMessageID !== null ? { messageID: opts.sessionRevertMessageID } : {} } };
+        }
+        return { data: {} };
       },
     },
     tui: {
