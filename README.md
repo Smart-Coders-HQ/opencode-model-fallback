@@ -46,6 +46,12 @@ Create `model-fallback.json` in either:
 - `.opencode/model-fallback.json`
 - `~/.config/opencode/model-fallback.json`
 
+Model keys use the format `providerID/modelID`. Nested provider paths with forward slashes are supported:
+
+- `anthropic/claude-sonnet-4-20250514`
+- `nvidia/z-ai/glm-5.2`
+- `openrouter/tencent/hy3:free`
+
 Minimal example:
 
 ```json
