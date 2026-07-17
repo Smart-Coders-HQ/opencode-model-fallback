@@ -22,7 +22,14 @@ export const DEFAULT_LOG_PATH = join(homedir(), ".local/share/opencode/logs/mode
 export const DEFAULT_CONFIG: PluginConfig = {
   enabled: true,
   defaults: {
-    fallbackOn: ["rate_limit", "quota_exceeded", "5xx", "timeout", "overloaded"],
+    fallbackOn: [
+      "rate_limit", "quota_exceeded", "5xx", "timeout", "overloaded",
+      "unauthorized", "401", "402", "403", "429", "500", "502", "503", "504",
+      "limit", "insufficient_credits", "insufficient_balance", "insufficient_quota",
+      "premium_subscription", "premium", "subscription_required", "payment_required",
+      "credit_balance", "quota_exceeded_message", "billing", "no_credits",
+      "out_of_credits", "insufficient_funds"
+    ],
     cooldownMs: 300_000, // 5 minutes
     retryOriginalAfterMs: 900_000, // 15 minutes
     maxFallbackDepth: 3,

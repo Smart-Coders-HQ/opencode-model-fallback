@@ -3,7 +3,7 @@ import { isAbsolute, relative, resolve } from "path";
 import { z } from "zod";
 import { DEFAULT_CONFIG } from "./defaults.js";
 
-const MODEL_KEY_RE = /^[a-zA-Z0-9_-]{1,100}\/[a-zA-Z0-9._-]{1,100}$/;
+const MODEL_KEY_RE = /^[a-zA-Z0-9_-]{1,100}\/[a-zA-Z0-9._\/:-]{1,100}$/;
 const home = resolve(homedir());
 
 function formatPath(path: Array<PropertyKey>): string {
@@ -30,7 +30,7 @@ const agentConfig = z.object({
 
 const fallbackDefaults = z.object({
   fallbackOn: z
-    .array(z.enum(["rate_limit", "quota_exceeded", "5xx", "timeout", "overloaded"]))
+    .array(z.enum(["rate_limit", "quota_exceeded", "5xx", "timeout", "overloaded", "unauthorized", "401", "402", "403", "429", "500", "502", "503", "504", "limit", "insufficient_credits", "insufficient_balance", "insufficient_quota", "premium_subscription", "premium", "subscription_required", "payment_required", "credit_balance", "quota_exceeded_message", "billing", "no_credits", "out_of_credits", "insufficient_funds"]))
     .optional(),
   cooldownMs: z.number().min(10_000).optional(),
   retryOriginalAfterMs: z.number().min(10_000).optional(),
