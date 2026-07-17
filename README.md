@@ -23,19 +23,19 @@ The plugin tracks model health globally, keeps fallback depth per session, and w
 
 ## Installation
 
-Add the plugin to `~/.config/opencode/opencode.jsonc`:
+Add the plugin to `~/.config/opencode/opencode.json`:
 
-```jsonc
+```json
 {
-  "plugin": ["@smart-coders-hq/opencode-model-fallback"],
+  "plugin": ["@smart-coders-hq/opencode-model-fallback"]
 }
 ```
 
 For local development:
 
-```jsonc
+```json
 {
-  "plugin": ["file:///path/to/opencode-model-fallback/dist/index.js"],
+  "plugin": ["file:///path/to/opencode-model-fallback/dist/index.js"]
 }
 ```
 
@@ -45,6 +45,12 @@ Create `model-fallback.json` in either:
 
 - `.opencode/model-fallback.json`
 - `~/.config/opencode/model-fallback.json`
+
+Model keys use the format `providerID/modelID`. Nested provider paths with forward slashes are supported:
+
+- `anthropic/claude-sonnet-4-20250514`
+- `nvidia/z-ai/glm-5.2`
+- `openrouter/tencent/hy3:free`
 
 Minimal example:
 
@@ -113,6 +119,37 @@ Per-agent example:
 
 If you still have `rate-limit-fallback.json`, it is discovered and auto-migrated on load.
 
+## Extended `fallbackOn` categories
+
+The 5 default categories (`rate_limit`, `quota_exceeded`, `5xx`, `timeout`, `overloaded`) cover common provider errors. For users on free tiers or providers with aggressive billing checks, an expanded set of 29 categories catches additional failure modes:
+
+| Category | Reason |
+|----------|--------|
+| `unauthorized`, `401`, `402`, `403` | Auth/credit errors not covered by defaults |
+| `429`, `500`, `502`, `503`, `504` | Explicit HTTP status codes |
+| `limit`, `insufficient_credits`, `insufficient_balance` | Free tier exhausted messages |
+| `insufficient_quota`, `premium_subscription`, `premium` | Paywall barriers |
+| `subscription_required`, `payment_required` | Free plan errors |
+| `credit_balance`, `quota_exceeded_message`, `billing` | Billing errors |
+| `no_credits`, `out_of_credits`, `insufficient_funds` | No balance |
+
+Example with expanded categories:
+
+```json
+{
+  "defaults": {
+    "fallbackOn": [
+      "rate_limit", "quota_exceeded", "5xx", "timeout", "overloaded",
+      "unauthorized", "401", "402", "403", "429", "500", "502", "503", "504",
+      "limit", "insufficient_credits", "insufficient_balance", "insufficient_quota",
+      "premium_subscription", "premium", "subscription_required", "payment_required",
+      "credit_balance", "quota_exceeded_message", "billing", "no_credits",
+      "out_of_credits", "insufficient_funds"
+    ]
+  }
+}
+```
+
 ## `/fallback-status`
 
 Run `/fallback-status` in any OpenCode session to see:
@@ -158,7 +195,7 @@ bun run build
 
 Local plugin config:
 
-```jsonc
+```json
 { "plugin": ["file:///absolute/path/to/dist/index.js"] }
 ```
 
