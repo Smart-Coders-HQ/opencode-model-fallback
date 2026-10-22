@@ -99,7 +99,8 @@ export function createFallbackStatusTool(
         lines.push("- All models healthy (no issues detected)");
       } else {
         for (const h of allHealth) {
-          const stateEmoji = h.state === "healthy" ? "✓" : h.state === "cooldown" ? "~" : "✗";
+          const stateEmoji =
+            h.state === "healthy" ? "✓" : h.state === "cooldown" ? "~" : h.state === "quarantined" ? "⛔" : "✗";
           let detail = `- \`${h.modelKey}\` — **${h.state}** ${stateEmoji}`;
           if (h.state === "rate_limited" && h.cooldownExpiresAt) {
             const secsLeft = Math.max(0, Math.round((h.cooldownExpiresAt - Date.now()) / 1000));
@@ -107,8 +108,15 @@ export function createFallbackStatusTool(
           } else if (h.state === "cooldown" && h.retryOriginalAt) {
             const secsLeft = Math.max(0, Math.round((h.retryOriginalAt - Date.now()) / 1000));
             detail += ` (recovery in ${secsLeft}s)`;
+          } else if (h.state === "quarantined" && h.quarantinedUntil && h.quarantinedUntil > Date.now()) {
+            const secsLeft = Math.max(0, Math.round((h.quarantinedUntil - Date.now()) / 1000));
+            detail += ` (quarantined ${secsLeft}s)`;
           }
           if (h.failureCount > 0) detail += ` [${h.failureCount} failures]`;
+          if (h.quarantinedUntil && h.quarantinedUntil > Date.now()) {
+            const secsLeft = Math.max(0, Math.round((h.quarantinedUntil - Date.now()) / 1000));
+            detail += ` (quarantined ${secsLeft}s)`;
+          }
           lines.push(detail);
         }
       }

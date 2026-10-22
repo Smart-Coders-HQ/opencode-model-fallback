@@ -6,16 +6,17 @@ import type { ModelKey } from "../types.js";
  * Strategy:
  *   1. First model that is "healthy"
  *   2. First model that is "cooldown" (better than nothing)
- *   3. null if all are "rate_limited"
+ *   3. null if all are "rate_limited" or quarantined
  *
- * Always skips the current model.
+ * Always skips the current model and any model that is not usable
+ * (rate_limited or quarantined).
  */
 export function resolveFallbackModel(
   chain: ModelKey[],
   currentModel: ModelKey | null,
   health: ModelHealthStore
 ): ModelKey | null {
-  const candidates = chain.filter((m) => m !== currentModel);
+  const candidates = chain.filter((m) => m !== currentModel && health.isUsable(m));
 
   // Prefer healthy, then cooldown
   const healthy = candidates.find((m) => health.get(m).state === "healthy");

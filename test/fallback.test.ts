@@ -95,6 +95,8 @@ describe("resolveFallbackModels", () => {
       cooldownMs: 300_000,
       retryOriginalAfterMs: 900_000,
       maxFallbackDepth: 3,
+      retriesBeforeFallback: 0,
+      quarantineAfterFallbackMs: 0,
     },
     agents: {
       build: { fallbackModels: ["a/1", "a/2"] },

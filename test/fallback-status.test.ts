@@ -12,6 +12,8 @@ const BASE_CONFIG: PluginConfig = {
     cooldownMs: 300_000,
     retryOriginalAfterMs: 900_000,
     maxFallbackDepth: 3,
+    retriesBeforeFallback: 0,
+    quarantineAfterFallbackMs: 0,
   },
   agents: {
     "*": { fallbackModels: ["anthropic/claude-sonnet-4"] },
@@ -64,5 +66,21 @@ describe("fallback-status tool", () => {
     expect(output).toContain("### Fallback History");
     expect(output).toContain("(rate_limit, preemptive)");
     expect(output).toContain("### Usage Summary");
+  });
+});
+
+describe("fallback-status tool — quarantine", () => {
+  it("shows quarantine countdown for active quarantines", async () => {
+    const { client } = makeMockClient();
+    const store = makeStore();
+    store.sessions.setOriginalModel("s1", "openai/gpt-5.3-codex");
+    store.health.quarantine("openai/gpt-5.3-codex", 60_000);
+
+    const tool = createFallbackStatusTool(store, BASE_CONFIG, client, "/tmp");
+    const output = await tool.execute({}, {
+      sessionID: "s1",
+    } as Parameters<typeof tool.execute>[1]);
+
+    expect(output).toMatch(/\(quarantined \d+s\)/);
   });
 });

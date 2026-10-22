@@ -40,9 +40,9 @@ export function tryPreemptiveRedirect(
     }
   }
 
-  // Only redirect if the target model is actively rate-limited
+  // Redirect when the target model is actively rate-limited or quarantined
   const health = store.health.get(modelKey);
-  if (health.state !== "rate_limited") {
+  if (health.state !== "rate_limited" && !store.health.isQuarantined(modelKey)) {
     return { redirected: false };
   }
 

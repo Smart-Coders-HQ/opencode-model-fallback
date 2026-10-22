@@ -195,6 +195,14 @@ export async function attemptFallback(
       );
     }
 
+    // Quarantine the model we are leaving behind regardless of reason
+    if (currentModel) {
+      store.health.quarantine(
+        currentModel,
+        config.defaults.quarantineAfterFallbackMs,
+      );
+    }
+
     // Set lastFallbackAt optimistically NOW — before the async sequence —
     // so any stale retry events that fire during abort/revert/prompt are
     // caught by the dedup window. (recordFallback sets it again on success.)
@@ -281,6 +289,11 @@ export async function attemptFallback(
       reason,
       agentName,
     );
+
+    // Quarantine the previously used model to prevent cycling
+    if (currentModel && config.defaults.quarantineAfterFallbackMs > 0) {
+      store.health.quarantine(currentModel, config.defaults.quarantineAfterFallbackMs);
+    }
 
     logger.info("fallback.success", {
       sessionId,

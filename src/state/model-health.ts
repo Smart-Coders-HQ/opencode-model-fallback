@@ -6,7 +6,7 @@ export class ModelHealthStore {
   private onTransition?: (modelKey: ModelKey, from: HealthState, to: HealthState) => void;
 
   constructor(opts?: {
-    onTransition?: (modelKey: ModelKey, from: HealthState, to: HealthState) => void;
+    onTransition?: (modelKey: ModelKey, from: HealthState, to: HealthState) => void
   }) {
     this.onTransition = opts?.onTransition;
     // Check state transitions every 30 seconds.
@@ -32,13 +32,28 @@ export class ModelHealthStore {
     this.store.set(modelKey, health);
   }
 
+  quarantine(modelKey: ModelKey, ms: number): void {
+    if (ms <= 0) return;
+    const existing = this.get(modelKey);
+    this.store.set(modelKey, {
+      ...existing,
+      quarantinedUntil: Date.now() + ms,
+    });
+  }
+
+  isQuarantined(modelKey: ModelKey): boolean {
+    const until = this.get(modelKey).quarantinedUntil;
+    return until !== null && Date.now() < until;
+  }
+
   isUsable(modelKey: ModelKey): boolean {
+    if (this.isQuarantined(modelKey)) return false;
     const h = this.get(modelKey);
     return h.state === "healthy" || h.state === "cooldown";
   }
 
   preferScore(modelKey: ModelKey): number {
-    // healthy=2, cooldown=1, rate_limited=0
+    if (this.isQuarantined(modelKey)) return 0;
     const state = this.get(modelKey).state;
     if (state === "healthy") return 2;
     if (state === "cooldown") return 1;
@@ -59,21 +74,27 @@ export class ModelHealthStore {
   private tick(): void {
     const now = Date.now();
     for (const [key, health] of this.store) {
+      let current = health;
+      if (current.quarantinedUntil !== null && now >= current.quarantinedUntil) {
+        current = { ...current, quarantinedUntil: null };
+        this.store.set(key, current);
+      }
+
       if (
-        health.state === "rate_limited" &&
-        health.cooldownExpiresAt &&
-        now >= health.cooldownExpiresAt
+        current.state === "rate_limited" &&
+        current.cooldownExpiresAt &&
+        now >= current.cooldownExpiresAt
       ) {
-        const next: ModelHealth = { ...health, state: "cooldown" };
+        const next: ModelHealth = { ...current, state: "cooldown" };
         this.store.set(key, next);
         this.onTransition?.(key, "rate_limited", "cooldown");
       } else if (
-        health.state === "cooldown" &&
-        health.retryOriginalAt &&
-        now >= health.retryOriginalAt
+        current.state === "cooldown" &&
+        current.retryOriginalAt &&
+        now >= current.retryOriginalAt
       ) {
         const next: ModelHealth = {
-          ...health,
+          ...current,
           state: "healthy",
           cooldownExpiresAt: null,
           retryOriginalAt: null,
@@ -92,6 +113,7 @@ export class ModelHealthStore {
       failureCount: 0,
       cooldownExpiresAt: null,
       retryOriginalAt: null,
+      quarantinedUntil: null,
     };
   }
 }

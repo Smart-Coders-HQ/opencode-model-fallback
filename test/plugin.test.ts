@@ -13,6 +13,8 @@ const BASE_CONFIG: PluginConfig = {
     cooldownMs: 300_000,
     retryOriginalAfterMs: 900_000,
     maxFallbackDepth: 3,
+    retriesBeforeFallback: 0,
+    quarantineAfterFallbackMs: 0,
   },
   agents: {
     coder: {

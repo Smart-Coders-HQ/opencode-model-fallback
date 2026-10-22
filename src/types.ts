@@ -8,7 +8,7 @@ export type ErrorCategory =
   | "overloaded"
   | "unknown";
 
-export type HealthState = "healthy" | "rate_limited" | "cooldown";
+export type HealthState = "healthy" | "rate_limited" | "cooldown" | "quarantined";
 
 export interface ModelHealth {
   modelKey: ModelKey;
@@ -17,6 +17,7 @@ export interface ModelHealth {
   failureCount: number;
   cooldownExpiresAt: number | null;
   retryOriginalAt: number | null;
+  quarantinedUntil: number | null;
 }
 
 export interface FallbackEvent {
@@ -52,6 +53,8 @@ export interface FallbackDefaults {
   cooldownMs: number;
   retryOriginalAfterMs: number;
   maxFallbackDepth: number;
+  retriesBeforeFallback: number;
+  quarantineAfterFallbackMs: number;
 }
 
 export interface PluginConfig {

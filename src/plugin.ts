@@ -15,6 +15,13 @@ import { FallbackStore } from "./state/store.js";
 import { createFallbackStatusTool } from "./tools/fallback-status.js";
 import type { ModelKey } from "./types.js";
 
+export function shouldDeferFallback(
+  attempt: number | undefined,
+  retriesBeforeFallback: number,
+): boolean {
+  return typeof attempt === "number" && attempt <= retriesBeforeFallback;
+}
+
 function resolveFallbackStatusCommandPath(): string {
   return join(homedir(), ".config", "opencode", "commands", "fallback-status.md");
 }
@@ -32,7 +39,7 @@ export function ensureFallbackStatusCommand(logger: Logger, cmdPath: string): vo
   }
 }
 
-export const createPlugin: Plugin = async ({ client, directory }) => {
+export function createPlugin({ client, directory }: Parameters<Plugin>[0]): Hooks {
   const { config, path: configPath, warnings, migrated } = loadConfig(directory);
 
   const logger = new Logger(client, config.logPath, config.logging, config.logLevel);
@@ -125,7 +132,7 @@ export const createPlugin: Plugin = async ({ client, directory }) => {
   };
 
   return hooks;
-};
+}
 
 export async function handleEvent(
   event: Event,
@@ -141,7 +148,7 @@ export async function handleEvent(
     const { sessionID, status } = event.properties;
 
     if (status.type === "retry") {
-      await handleRetry(sessionID, status.message, client, store, config, logger, directory);
+      await handleRetry(sessionID, status.message, status.attempt, client, store, config, logger, directory);
     } else if (status.type === "idle") {
       await handleIdle(sessionID, client, store, config, logger);
     }
@@ -195,6 +202,7 @@ export async function handleEvent(
 async function handleRetry(
   sessionId: string,
   message: string,
+  attempt: number | undefined,
   client: Parameters<Plugin>[0]["client"],
   store: FallbackStore,
   config: ReturnType<typeof loadConfig>["config"],
@@ -213,6 +221,19 @@ async function handleRetry(
       sessionId,
       category,
       messageLength: message.length,
+    });
+    return;
+  }
+
+  // Gate: allow N retries before falling back. When the attempt counter has
+  // not yet crossed the configured threshold, defer the fallback so opencode's
+  // built-in retry loop gets a chance to succeed on the same model.
+  if (shouldDeferFallback(attempt, config.defaults.retriesBeforeFallback)) {
+    logger.info("retry.deferred", {
+      sessionId,
+      attempt,
+      retriesBeforeFallback: config.defaults.retriesBeforeFallback,
+      category,
     });
     return;
   }
